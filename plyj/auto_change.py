@@ -1,14 +1,17 @@
 #!/usr/bin/env python
 
-import plyj.parser as ply
-import plyj.model as model
+import model
+import parser
 
+import json
 import re
 import logging
 import argparse
 import os
 import collections
 import sys
+
+import codecs
 
 _YEAR_PATTERN = re.compile(r'^(\/\/ Copyright) 20\d\d')
 
@@ -22,9 +25,18 @@ _ASSERTION_METHOD_SET = {
     'assertTrue',
     'fail'}
 
-_SPECIAL_METHOD = {
-    'getInstrumentation',
-    }
+_SPECIAL_SUPER_CLASS = {
+    'BaseActivityInstrumentationTestCase',
+    'ActivityInstrumentationTestCase2',
+    'ActivityTestCase',
+    'InstrumentationTestCase',
+    'TestCase'
+}
+
+
+_SPECIAL_METHOD = {'getInstrumentation', 'runTestOnUiThread'}
+
+_TEST_RULE_METHODS = {'run', 'apply', 'evaluate'}
 
 class ElementWrapper(object):
   def __init__(self, element, parent):
@@ -38,8 +50,7 @@ def _ReturnReplacement(pattern_string, replacement, string, flags=0):
   if len(res) > 1:
     logging.warning('"%s" pattern is found more than once (%d) in "%s"' % (
                     pattern_string, len(res), string))
-    ipdb.set_trace()
-  return pattern.sub(replacement, string)
+  return pattern.sub(replacement, string, count=1)
 
 def _SetIfNone(element, func):
   if element is None:
@@ -95,22 +106,25 @@ def _SortListAndTable(ls, tb, pls, ptb):
           sorted_main_element_list, sorted_main_element_table)
 
 class JavaFileTree(object):
-  def __init__(self, tree, filepath, content_string, api_mapping):
+  def __init__(self, tree, filepath, api_mapping, content=None):
     self._tree = tree
     self._filepath = filepath #the filepath to the javafile
-    self._content = content_string #content string of original java file
+    if filepath:
+      with codecs.open(filepath, encoding='utf-8', mode='r') as f:
+        self._content = f.read() #content string of original java file
+    else:
+      self._content = content
     self._element_list, self._element_table, self._main_element_list, \
         self._main_element_table = TraverseTree(self._tree)
     assert len(self._element_list) > 0
 
-    self.api_mapping = None
+    self.mapping = api_mapping
     self.super_class_name = 'java.lang.Object'
     if len(self._element_table.get(model.ClassDeclaration, [])) > 0:
       self.main_class = min(
           self._element_table[model.ClassDeclaration], key=lambda x:x.lexpos)
       if self.main_class.extends is not None:
         self.super_class_name = self.main_class.extends.name.value
-        self.api_mapping = api_mapping[self.super_class_name]
 
     self.added_imports = []
 
@@ -190,8 +204,12 @@ class JavaFileTree(object):
       self._element_table[k] = sorted(v, key=lambda x: x.lexpos)
 
   def _insertInBetween(self, insertion, start, end):
-    self.content = (
+    try:
+      self.content = (
         self.content[:start] + insertion + self.content[end:])
+    except:
+      import ipdb
+      ipdb.set_trace()
 
   def _insertBelow(self, element, partial_insertion, auto_indentation=True):
     index = self._lexposToLoc(element.lexpos)
@@ -279,7 +297,6 @@ class JavaFileTree(object):
     self._insertBelow(element, '\n    @Rule', auto_indentation=False)
     self._addImport('org.junit.Rule')
 
-  #TODO: refactory findNextElement and findNextParallelElement to the same function
   def _findNextParallelElementIndex(self, element):
     for i, j in enumerate(self.element_table[type(element)]):
       if j == element:
@@ -368,34 +385,50 @@ class JavaFileTree(object):
         self._addImport('org.junit.Test')
 
   def insertActivityTestRuleTest(self):
-    self._insertActivityTestRule(self.api_mapping['rule_var'], self.api_mapping['instan'])
+    if self.mapping and self.mapping.get(self.super_class_name):
+      self._insertActivityTestRule(
+          self.mapping.get(self.super_class_name)['rule_var'],
+          self.mapping.get(self.super_class_name)['instan'])
 
   def changeApis(self, activity_rule='mActivityTestRule'):
     for m in self.main_element_table[model.MethodInvocation]:
       if self._isInherited(m):
-        if m.name in self.api_mapping['method'].keys():
-          self._insertInfront(m, activity_rule+'.')
-        else:
-          logging.warning('I do not know how to handle this method call: %s' %
+        if self.mapping and self.mapping.get(self.super_class_name):
+          if m.name in self.mapping[self.super_class_name]['api']:
+            self._insertInfront(m, activity_rule+'.')
+          if m.name in self.mapping[self.super_class_name]['special_method_change'].keys():
+            self._replaceString(
+                m.name,
+                self.mapping[self.super_class_name]['special_method_change'][m.name],
+                element=m,
+                optional=False)
+          else:
+            logging.warning('I do not know how to handle this method call: %s' %
                           m.name)
 
-def ConvertDirectory(directory, parser):
-  api_mapping = AnalyzeMapping(directory)
+def AnalyzeMapping(java_parser, mapping):
+  for _, info in mapping.iteritems():
+    file_tree = java_parser.parse_file(file(info['location']))
+    f = JavaFileTree(file_tree, info['location'], mapping)
+    api_list = [m.name for m in f.main_element_table[model.MethodDeclaration]
+                if ('public' in m.modifiers or 'protected' in m.modifiers)
+                and m.name not in _TEST_RULE_METHODS]
+    info.update({
+      'api': list(set(api_list)),
+      'parent': f.super_class_name if f.super_class_name not in [
+          'java.lang.Object', 'ActivityTestRule'] else None})
+  return mapping
+
+def ConvertDirectory(directory, java_parser, mapping):
   for (dirpath, _, filenames) in os.walk(directory):
     for filename in filenames:
       if filename.endswith('Test.java'):
-        ConvertFile(os.path.join(dirpath, filename), parser, api_mapping)
+        ConvertFile(os.path.join(dirpath, filename), java_parser, mapping)
 
-def AnalyzeMapping(directory):
-  return {} #STUB
-
-def ConvertFile(filepath, parser, api_mapping):
-  logger = logging.getLogger()
-  logger.setLevel(logging.ERROR)
-  file_tree = parser.parse_file(file(filepath))
-  with open(filepath, 'r') as f_origin:
-    contents = f_origin.read()
-  f = JavaFileTree(file_tree, filepath, contents, api_mapping)
+def ConvertFile(filepath, java_parser, api_mapping):
+  file_tree = java_parser.parse_file(file(filepath))
+  f = JavaFileTree(file_tree, filepath, api_mapping)
+  logging.info('current file is %s' % filepath)
   if f.isJUnit4():
     logging.info('%s is already junit 4' % filepath)
   else:
@@ -408,48 +441,36 @@ def ConvertFile(filepath, parser, api_mapping):
     f.addTestAnnotation()
     f.insertActivityTestRuleTest()
     f.changeApis()
-  with open(filepath+'.new', 'w') as f_new:
-    f_new.write(f.content)
+    with codecs.open(filepath, encoding='utf-8', mode='w') as f_new:
+      f_new.write(f.content)
 
 
 def main():
   #TODO: add argparse
   argument_parser = argparse.ArgumentParser()
-  argument_parser.add_argument('-f', '--java-file', dest='java-file',
-                               help='Java file')
-  argument_parser.add_argument(
-      '-r', '--rule-var-name', dest='rule_var_name',
-      help='ActivityTestRule var name, default to be mActivityTestRule',
-      default='mActivityTestRule')
+  argument_parser.add_argument('-f', '--java-file', help='Java file')
   argument_parser.add_argument('-d', '--directory',
                                help='Directory where all java file lives')
+  argument_parser.add_argument(
+      '-m', '--mapping-file', dest='mapping_file', required=True,
+      help='json file that maps all the TestBase to TestRule info')
   arguments = argument_parser.parse_args(sys.argv[1:])
 
+  if arguments.java_file and arguments.directory:
+    raise Exception(
+        'Can not specify --jave-file and --directory at the same time')
   logger = logging.getLogger()
   logger.setLevel(logging.ERROR)
-  java_parser = ply.Parser(logger)
-  # ConvertDirectory('./content', java_parser)
-  api_mapping = {
-    'ContentShellTestBase': {
-      'rule_var': 'ContentShellActivityTestRule',
-      'rule': 'ContentShellActivityTestRule',
-      'instan': 'ContentShellActivityTestRule()',
-      'method': {
-        'assertScreenIsOn': 'assertScreenIsOn',
-        'launchContentShellWithUrl': 'launchContentShellWithUrl',
-        'startActivityWithTestUrl': 'startActivityWithTestRule',
-        'getContentViewCore': 'getContentViewCore',
-        'getWebContents': 'getWebContents',
-        'waitForActiveShellToBeDoneLoading': 'waitForActiveShellToBeDoneLoading',
-        'loadNewShell': 'loadNewShell',
-        'loadUrl': 'loadUrl',
-        'handleBlockingCallbackAction': 'handleBlockingCallbackAction',
-        'replaceContainerView': 'replaceContainerView',
-        'assertWaitForPageScaleFactorMatch': 'assertWaitForPageScaleFactorMatch',
-      }
-    }
-  }
-  ConvertFile('/usr/local/google/home/yolandyan/Code/clankium/src/content/shell/android/javatests/src/org/chromium/content_shell_apk/ContentShellShellManagementTest.java.old', java_parser, api_mapping)
+  java_parser = parser.Parser(logger)
+  with open(os.path.abspath(arguments.mapping_file), 'r') as f:
+    mapping = json.loads(f.read())
+    mapping = AnalyzeMapping(java_parser, mapping)
+  if arguments.java_file:
+    ConvertFile(arguments.java_file, java_parser, mapping)
+  else:
+    ConvertDirectory(arguments.directory, java_parser, mapping)
+
+  # ConvertFile('/usr/local/google/home/yolandyan/Code/clankium/src/content/shell/android/javatests/src/org/chromium/content_shell_apk/ContentShellShellManagementTest.java.old', java_parser, api_mapping)
 
 if __name__ == '__main__':
   main()
