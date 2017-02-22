@@ -4,7 +4,7 @@ import ply.lex as lex
 import ply.yacc as yacc
 import logging
 
-from .model import *
+from model import *
 
 class MyLexer(object):
 

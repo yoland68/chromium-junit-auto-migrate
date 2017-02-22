@@ -10,57 +10,57 @@ from mock import patch
 
 class MockTest(unittest.TestCase):
   @patch(
-      '__main__.TraverseTree',
+      'plyj.auto_change.TraverseTree',
       lambda x: (
           [model.SourceElement(lexpos=3), model.SourceElement(lexpos=8)],
           {}, {}, {}))
   def testInsertAbove(self):
-    jft = auto_change.JavaFileTree(None, '/xyz', '\nabcd efg\n', None)
+    jft = auto_change.JavaFileTree(None, None, None, content='\nabcd efg\n')
     element = jft._element_list[0]
     jft._insertAbove(element, '1234')
     self.assertEqual(jft.content, '\n1234\nabcd efg\n')
 
   @patch(
-      '__main__.TraverseTree',
+      'plyj.auto_change.TraverseTree',
       lambda x: (
           [model.SourceElement(lexpos=3), model.SourceElement(lexpos=8)],
           {}, {}, {}))
   def testInsertAbove2(self):
-    jft = auto_change.JavaFileTree(None, '/xyz', '\nabcd efg\n', None)
+    jft = auto_change.JavaFileTree(None, None, None, content='\nabcd efg\n')
     element = jft._element_list[1]
     jft._insertAbove(element, '1234')
     self.assertEqual(jft.content, '\n1234\nabcd efg\n')
 
   @patch(
-      '__main__.TraverseTree',
+      'plyj.auto_change.TraverseTree',
       lambda x: (
           [model.SourceElement(lexpos=3), model.SourceElement(lexpos=8)],
           {}, {}, {}))
   def testInsertBelow(self):
-    jft = auto_change.JavaFileTree(None, '/xyz', '\nabcd efg\n', None)
+    jft = auto_change.JavaFileTree(None, None, None, content='\nabcd efg\n')
     element = jft._element_list[0]
     jft._insertBelow(element, '1234')
     self.assertEqual(jft.content, '\nabcd efg\n1234\n')
 
   @patch(
-      '__main__.TraverseTree',
+      'plyj.auto_change.TraverseTree',
       lambda x: (
           [model.SourceElement(lexpos=3), model.SourceElement(lexpos=8)],
           {}, {}, {}))
   def testInsertAboveThenBelow(self):
-    jft = auto_change.JavaFileTree(None, '/xyz', '\nabcd efg\n', None)
+    jft = auto_change.JavaFileTree(None, None, None, content='\nabcd efg\n')
     element = jft._element_list[0]
     jft._insertAbove(element, '1234')
     jft._insertBelow(element, '1234')
     self.assertEqual(jft.content, '\n1234\nabcd efg\n1234\n')
 
   @patch(
-      '__main__.TraverseTree',
+      'plyj.auto_change.TraverseTree',
       lambda x: (
           [model.SourceElement(lexpos=3), model.SourceElement(lexpos=8),
            model.SourceElement(lexpos=12)], {}, {}, {}))
   def testInsertBelowThenAbove(self):
-    jft = auto_change.JavaFileTree(None, '/xyz', '\nabcd efg\nxyz', None)
+    jft = auto_change.JavaFileTree(None, None, None, content='\nabcd efg\nxyz')
     element = jft._element_list[1]
     jft._insertBelow(element, '1234')
     element = jft._element_list[2]
@@ -68,13 +68,13 @@ class MockTest(unittest.TestCase):
     self.assertEqual(jft.content, '\nabcd efg\n1234\n1234\nxyz')
 
   @patch(
-      '__main__.TraverseTree',
+      'plyj.auto_change.TraverseTree',
       lambda x: (
           [model.SourceElement(lexpos=3, lexspan=(3,6)),
            model.SourceElement(lexpos=8, lexspan=(8,10)),
            model.SourceElement(lexpos=12, lexspan=(12,14))], {}, {}, {}))
   def testReplaceString(self):
-    jft = auto_change.JavaFileTree(None, '/xyz', '\nabcd efg\nxyz', None)
+    jft = auto_change.JavaFileTree(None, None, None, content='\nabcd efg\nxyz')
     element = jft._element_list[0]
     jft._replaceString('bc\w', '1', element=element)
     self.assertEqual(jft.content, '\na1 efg\nxyz')
@@ -169,7 +169,7 @@ public class Test {
     logger.setLevel(logging.ERROR)
     java_parser = ply.Parser(logger)
     tree = java_parser.parse_string(file_string)
-    file_tree = auto_change.JavaFileTree(tree, 'Test.java', file_string, None)
+    file_tree = auto_change.JavaFileTree(tree, None, None, content=file_string)
     file_tree.replaceInstrumentationApis()
     self.assertEqual(file_tree.content, expected_string)
 
@@ -208,7 +208,7 @@ public class Test extends TestCase {
     java_parser = ply.Parser(logger)
     tree = java_parser.parse_string(file_string)
     self.file_tree = auto_change.JavaFileTree(
-        tree, 'Test.java', file_string, {'TestCase':{'method':{'A':'A'}}})
+        tree, None, {'TestCase':{'method':{'A':'A'}}}, content=file_string)
 
   def testHelperFindNextElementIndex(self):
     expected_file_string = '''package test_junit4_autochange;
@@ -343,7 +343,7 @@ public class Test {
     logger.setLevel(logging.ERROR)
     java_parser = ply.Parser(logger)
     tree = java_parser.parse_string(file_string)
-    file_tree = auto_change.JavaFileTree(tree, 'Test.java', file_string, None)
+    file_tree = auto_change.JavaFileTree(tree, None, None, file_string)
     file_tree._insertActivityTestRule(
         'ActivityTestRule<TestActivity>', 'ActivityTestRule<>()')
     self.assertEqual(file_tree.content, expected_string)
@@ -380,8 +380,9 @@ public class Test extends
     logger.setLevel(logging.ERROR)
     java_parser = ply.Parser(logger)
     tree = java_parser.parse_string(file_string)
-    file_tree = auto_change.JavaFileTree(tree, 'Test.java', file_string,
-                             {'lalalalalal': {'method':{'A':'A'}}})
+    file_tree = auto_change.JavaFileTree(
+        tree, None, {'lalalalalal': {'method':{'A':'A'}}}, content=file_string)
+
     file_tree._insertActivityTestRule(
         'ActivityTestRule<TestActivity>', 'ActivityTestRule<>()')
     # DebugTest(file_tree.content, expected_string)
@@ -439,7 +440,8 @@ public class Test {
     logger.setLevel(logging.ERROR)
     java_parser = ply.Parser(logger)
     tree = java_parser.parse_string(file_string)
-    self.file_tree = auto_change.JavaFileTree(tree, 'Test.java', file_string, None)
+    self.file_tree = auto_change.JavaFileTree(
+        tree, None, None, content=file_string)
 
   def testAddTestAnnotation(self):
     expected_file_string = '''package test_junit4_autochange;
