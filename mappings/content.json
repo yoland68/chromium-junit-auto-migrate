@@ -5,7 +5,7 @@
         "rule": "ContentShellActivityTestRule",
         "instan": "ContentShellActivityTestRule()",
         "special_method_change": {
-            "startActivityWithTestUrl": "launchActivityWithTestUrl"
+            "startActivityWithTestUrl": "launchContentShellWithUrlSync"
         }
     },
     "JavaBridgeTestBase": {

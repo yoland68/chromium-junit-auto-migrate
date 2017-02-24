@@ -1,5 +1,5 @@
-import plyj.parser as ply
-import plyj.model as model
+import parser as ply
+import model as model
 
 import collections
 import logging

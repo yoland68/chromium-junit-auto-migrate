@@ -34,7 +34,9 @@ _SPECIAL_SUPER_CLASS = {
 }
 
 
-_SPECIAL_METHOD = {'getInstrumentation', 'runTestOnUiThread'}
+_SPECIAL_INSTRUMENTATION_TEST_CASE_APIS = {
+    'getActivity',
+}
 
 _TEST_RULE_METHODS = {'run', 'apply', 'evaluate'}
 
@@ -68,7 +70,7 @@ def TraverseTree(tree):
   parent = parent_stack[-1]
   while len(stack) != 0:
     current = stack.pop()
-    if isinstance(current, model.ClassDeclaration):
+    if isinstance(current, model.ClassDeclaration) and current not in parent_stack:
       parent_stack.append(current)
     if type(current) == list and len(current) > 0 and (
           any(isinstance(i, model.SourceElement) for i in current)):
@@ -100,7 +102,7 @@ def _SortListAndTable(ls, tb, pls, ptb):
   #ipdb.set_trace()
   for k, v in tb.iteritems():
     sorted_element_table[k] = sorted(v, key=lambda x: x.lexpos)
-  for k, v in tb.iteritems():
+  for k, v in ptb.iteritems():
     sorted_main_element_table[k] = sorted(v, key=lambda x: x.lexpos)
   return (sorted_element_list, sorted_element_table,
           sorted_main_element_list, sorted_main_element_table)
@@ -119,6 +121,7 @@ class JavaFileTree(object):
     assert len(self._element_list) > 0
 
     self.mapping = api_mapping
+
     self.super_class_name = 'java.lang.Object'
     if len(self._element_table.get(model.ClassDeclaration, [])) > 0:
       self.main_class = min(
@@ -170,9 +173,16 @@ class JavaFileTree(object):
         offset += j
     return offset+lex
 
+  def _isDeclaredLocally(self, method):
+    for declaration in self.main_element_table.get(model.MethodDeclaration, []):
+      if declaration.name == method.name:
+        return True
+
   def _isInherited(self, method):
     assert type(method) == model.MethodInvocation
     if method.target is not None:
+      return False
+    if self._isImportedStaticMethod(method):
       return False
     for declaration in self.element_table[model.MethodDeclaration]:
       if declaration.name == method.name:
@@ -204,12 +214,8 @@ class JavaFileTree(object):
       self._element_table[k] = sorted(v, key=lambda x: x.lexpos)
 
   def _insertInBetween(self, insertion, start, end):
-    try:
-      self.content = (
-        self.content[:start] + insertion + self.content[end:])
-    except:
-      import ipdb
-      ipdb.set_trace()
+    self.content = (
+      self.content[:start] + insertion + self.content[end:])
 
   def _insertBelow(self, element, partial_insertion, auto_indentation=True):
     index = self._lexposToLoc(element.lexpos)
@@ -321,13 +327,34 @@ class JavaFileTree(object):
             self.element_table[model.ImportDeclaration][-1],
             import_string)
 
-  def _removeImport(self, import_name):
+  def _isImportedType(self, type_element):
+    assert isinstance(type_element, model.InstanceCreation)
+    for i in self.element_table[model.ImportDeclaration]:
+      if i.name.value.split('.')[-1] == type_element.type.name.value:
+        return True
+    return False
+
+  def _isImportedStaticMethod(self, method):
+    assert isinstance(method, model.MethodInvocation)
+    for i in self.element_table[model.ImportDeclaration]:
+      if i.name.value.split('.')[-1] == method.name:
+        return True
+    return False
+
+  def _replaceImport(self, import_name, rule_type):
     start = self._lexposToLoc(
         self.element_table[model.ImportDeclaration][0].lexpos)
     end = self._lexposToLoc(
         self.element_table[model.ImportDeclaration][-1].lexend)
-    self._replaceString(r'import.*%s; *\n?' % import_name, '',
+    self._replaceString(r'(import.*)%s; *$' % import_name,
+                        r'\1%s;' % rule_type,
                         start=start, end=end)
+
+  def changeRunTestOnUiThread(self, rule_var_name='mActivityTestRule'):
+    for m in self.element_table[model.MethodDeclaration]:
+      if m.name == 'runTestOnUiThread' and not self._isDeclaredLocally(m):
+        self._replaceString(
+            'runTestOnUiThread', rule_var_name+'.'+'runOnUiThread', element=m)
 
   def isJUnit4(self):
     """Check if the test class is already JUnit4 by checking its super class"""
@@ -362,7 +389,7 @@ class JavaFileTree(object):
 
   def replaceInstrumentationApis(self):
     for m in self.element_table[model.MethodInvocation]:
-      if m.name in _SPECIAL_METHOD and self._isInherited(m):
+      if m.name == 'getInstrumentation' and self._isInherited(m):
         self._insertInfront(m, 'InstrumentationRegistry.')
         self._addImport('android.support.test.InstrumentationRegistry')
 
@@ -374,7 +401,8 @@ class JavaFileTree(object):
     self._insertAbove(self.main_class, '@RunWith(%s.class)' % runner_name)
 
   def removeExtends(self):
-    self._removeImport(self.super_class_name)
+    self._replaceImport(
+        self.super_class_name, self.mapping.get(self.super_class_name)['rule'])
     self._replaceString(r'extends .*? {', '{',
                         element=self.main_class, flags=re.DOTALL)
 
@@ -394,38 +422,53 @@ class JavaFileTree(object):
     for m in self.main_element_table[model.MethodInvocation]:
       if self._isInherited(m):
         if self.mapping and self.mapping.get(self.super_class_name):
-          if m.name in self.mapping[self.super_class_name]['api']:
+          if (m.name in self.mapping[self.super_class_name]['api'] or
+              m.name in _SPECIAL_INSTRUMENTATION_TEST_CASE_APIS):
             self._insertInfront(m, activity_rule+'.')
-          if m.name in self.mapping[self.super_class_name]['special_method_change'].keys():
+          elif m.name in self.mapping[self.super_class_name]['special_method_change'].keys():
             self._replaceString(
                 m.name,
                 self.mapping[self.super_class_name]['special_method_change'][m.name],
                 element=m,
                 optional=False)
+
+          elif m.name in _ASSERTION_METHOD_SET:
+            continue
           else:
             logging.warning('I do not know how to handle this method call: %s' %
                           m.name)
+
+def _isPublicOrProtected(modifiers):
+  return 'public' in modifiers or 'protected' in modifiers
 
 def AnalyzeMapping(java_parser, mapping):
   for _, info in mapping.iteritems():
     file_tree = java_parser.parse_file(file(info['location']))
     f = JavaFileTree(file_tree, info['location'], mapping)
     api_list = [m.name for m in f.main_element_table[model.MethodDeclaration]
-                if ('public' in m.modifiers or 'protected' in m.modifiers)
-                and m.name not in _TEST_RULE_METHODS]
+                if _isPublicOrProtected(m.modifiers) and
+                m.name not in _TEST_RULE_METHODS]
+    local_accessible_interface = [
+        m.name for m in f.main_element_table.get(model.InterfaceDeclaration, [])
+        if _isPublicOrProtected(m.modifiers)]
+    local_accessible_class = [
+        m.name for m in f.main_element_table.get(model.ClassDeclaration, [])
+        if _isPublicOrProtected(m.modifiers)]
     info.update({
       'api': list(set(api_list)),
+      'types': local_accessible_class+local_accessible_interface,
       'parent': f.super_class_name if f.super_class_name not in [
           'java.lang.Object', 'ActivityTestRule'] else None})
   return mapping
 
-def ConvertDirectory(directory, java_parser, mapping):
+def ConvertDirectory(directory, java_parser, mapping, save_as_new=False):
   for (dirpath, _, filenames) in os.walk(directory):
     for filename in filenames:
       if filename.endswith('Test.java'):
-        ConvertFile(os.path.join(dirpath, filename), java_parser, mapping)
+        ConvertFile(
+            os.path.join(dirpath, filename), java_parser, mapping, save_as_new)
 
-def ConvertFile(filepath, java_parser, api_mapping):
+def ConvertFile(filepath, java_parser, api_mapping, save_as_new=False):
   file_tree = java_parser.parse_file(file(filepath))
   f = JavaFileTree(file_tree, filepath, api_mapping)
   logging.info('current file is %s' % filepath)
@@ -441,6 +484,8 @@ def ConvertFile(filepath, java_parser, api_mapping):
     f.addTestAnnotation()
     f.insertActivityTestRuleTest()
     f.changeApis()
+    if save_as_new:
+      filepath += '.new'
     with codecs.open(filepath, encoding='utf-8', mode='w') as f_new:
       f_new.write(f.content)
 
@@ -449,6 +494,8 @@ def main():
   #TODO: add argparse
   argument_parser = argparse.ArgumentParser()
   argument_parser.add_argument('-f', '--java-file', help='Java file')
+  argument_parser.add_argument('-n', '--save-as-new', default=False,
+                               action='store_true', help='Save as a new file')
   argument_parser.add_argument('-d', '--directory',
                                help='Directory where all java file lives')
   argument_parser.add_argument(
@@ -459,16 +506,18 @@ def main():
   if arguments.java_file and arguments.directory:
     raise Exception(
         'Can not specify --jave-file and --directory at the same time')
-  logger = logging.getLogger()
+  logger = logging.getLogger('parser_logger')
   logger.setLevel(logging.ERROR)
   java_parser = parser.Parser(logger)
   with open(os.path.abspath(arguments.mapping_file), 'r') as f:
     mapping = json.loads(f.read())
     mapping = AnalyzeMapping(java_parser, mapping)
   if arguments.java_file:
-    ConvertFile(arguments.java_file, java_parser, mapping)
+    ConvertFile(arguments.java_file, java_parser, mapping,
+                save_as_new=arguments.save_as_new)
   else:
-    ConvertDirectory(arguments.directory, java_parser, mapping)
+    ConvertDirectory(arguments.directory, java_parser, mapping,
+                     save_as_new=arguments.save_as_new)
 
   # ConvertFile('/usr/local/google/home/yolandyan/Code/clankium/src/content/shell/android/javatests/src/org/chromium/content_shell_apk/ContentShellShellManagementTest.java.old', java_parser, api_mapping)
 
