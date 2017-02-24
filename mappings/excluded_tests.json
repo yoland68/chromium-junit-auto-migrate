@@ -1,0 +1,5 @@
+{
+    "tests": [
+        "content/public/android/javatests/src/org/chromium/content/browser/input/ImeTest.java",
+        "content/public/android/javatests/src/org/chromium/content/browser/input/ImeLollipopTest.java"]
+}
