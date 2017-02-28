@@ -208,7 +208,7 @@ public class Test extends TestCase {
     java_parser = ply.Parser(logger)
     tree = java_parser.parse_string(file_string)
     self.file_tree = auto_change.JavaFileTree(
-        tree, None, {'TestCase':{'method':{'A':'A'}}}, content=file_string)
+        tree, None, {'TestCase':{'method':{'A':'A'}, 'rule': 'MyRule'}}, content=file_string)
 
   def testHelperFindNextElementIndex(self):
     expected_file_string = '''package test_junit4_autochange;
@@ -277,14 +277,13 @@ public class Test extends TestCase {
 }'''
     # ipdb.set_trace()
     self.file_tree.addClassRunner()
-    # DebugTest(self.file_tree.content, expected_file_string)
     self.assertEqual(self.file_tree.content, expected_file_string)
 
   def testRemoveExtends(self):
     expected_file_string='''package test_junit4_autochange;
 
 import a.b.c;
-
+import org.junit.MyRule;
 
 public class Test {
 
@@ -310,6 +309,7 @@ public class Test {
 }'''
     self.file_tree.removeExtends()
     self.assertEqual(self.file_tree.super_class_name, 'TestCase')
+    DebugTest(self.file_tree.content, expected_file_string)
     self.assertEqual(self.file_tree.content, expected_file_string)
 
 class InsertActivityTestRuleTest(unittest.TestCase):
@@ -385,8 +385,56 @@ public class Test extends
 
     file_tree._insertActivityTestRule(
         'ActivityTestRule<TestActivity>', 'ActivityTestRule<>()')
-    # DebugTest(file_tree.content, expected_string)
     self.assertEqual(file_tree.content, expected_string)
+
+class InnerClassTest(unittest.TestCase):
+  def setUp(self):
+    file_string = '''package test_junit4_autochange;
+
+import a.b.c;
+
+public class Test {
+
+  public static void main(String[] args) {
+    System.out.println("hello");
+  }
+
+  public static class Inner {
+    @SmallTest
+    @Feature({"Navigation"})
+    public void testDefaultCreateState() throws Exception {
+        assertEquals(View.INVISIBLE, mPopupZoomer.getVisibility());
+        assertFalse(mPopupZoomer.isShowing());
+    }
+
+    @SmallTest
+    @Feature({"Navigation"})
+    public void testShowWithoutBitmap() throws Exception {
+        mPopupZoomer.show(new Rect(0, 0, 5, 5));
+
+        // The view should be invisible.
+        assertEquals(View.INVISIBLE, mPopupZoomer.getVisibility());
+        assertFalse(mPopupZoomer.isShowing());
+        fail("abcde");
+    }
+  }
+
+  private interface Interface {
+    public void testShowWithBitmap();
+  }
+}'''
+    logger = logging.getLogger()
+    logger.setLevel(logging.ERROR)
+    java_parser = ply.Parser(logger)
+    tree = java_parser.parse_string(file_string)
+    self.file_tree = auto_change.JavaFileTree(
+        tree, None, None, content=file_string)
+
+  def testMainTable(self):
+    self.assertEqual(
+        len(self.file_tree.main_element_table[model.MethodDeclaration]), 1)
+    self.assertEqual(self.file_tree.main_element_table[model.MethodDeclaration][0].name, 'main')
+
 
 class AssertionTest(unittest.TestCase):
   def setUp(self):
