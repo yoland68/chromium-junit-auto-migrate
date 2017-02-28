@@ -63,27 +63,14 @@ def TraverseTree(tree):
   stack = [tree]
   element_list = []
   element_table = collections.defaultdict(list)
-  main_element_list= []
-  main_element_table = collections.defaultdict(list)
 
-  parent_stack = [tree.type_declarations[0]]
-  parent = parent_stack[-1]
   while len(stack) != 0:
     current = stack.pop()
-    if isinstance(current, model.ClassDeclaration) and current not in parent_stack:
-      parent_stack.append(current)
-    if type(current) == list and len(current) > 0 and (
-          any(isinstance(i, model.SourceElement) for i in current)):
+    if type(current) == list and len(current) > 0 and (any(isinstance(i, model.SourceElement) for i in current)):
       stack.extend(current)
     elif isinstance(current, model.SourceElement):
-      if current.lexpos > parent.lexend:
-        parent_stack.pop()
-        parent = parent_stack[-1]
       element_list.append(current)
       element_table[type(current)].append(current)
-      if len(parent_stack) == 1:
-        main_element_list.append(current)
-        main_element_table[type(current)].append(current)
       if getattr(current, '_fields'):
         for f in getattr(current, '_fields'):
           stack.append(getattr(current, f))
@@ -91,8 +78,25 @@ def TraverseTree(tree):
       logging.debug(
           'Current element in stack is neither SourceElement or list: '
           + str(current) + ' : ' + str(type(current)) + ', gonna ignore')
+  main_element_list, main_element_table = _GetMainListAndTable(element_list, element_table)
   return _SortListAndTable(
       element_list, element_table, main_element_list, main_element_table)
+
+def _GetMainListAndTable(element_list, element_table):
+  all_classes = element_table.get(model.ClassDeclaration, [])
+  all_classes.extend(element_table.get(model.InterfaceDeclaration, []))
+  if len(all_classes) == 1:
+    return element_list, element_table
+  else:
+    main_element_list = []
+    main_element_table = collections.defaultdict(list)
+    for i in element_list:
+      if len(
+          [e for e in all_classes if i.lexpos >= e.lexpos
+           and i.lexend <= e.lexend]) == 1:
+        main_element_list.append(i)
+        main_element_table[type(i)].append(i)
+    return main_element_list, main_element_table
 
 def _SortListAndTable(ls, tb, pls, ptb):
   sorted_element_list = sorted(ls, key=lambda x : x.lexpos)
@@ -160,6 +164,10 @@ class JavaFileTree(object):
   @property
   def main_element_table(self):
     return self._main_element_table
+
+  @property
+  def rule_dict(self):
+    return self.mapping.get(self.super_class_name, collections.defaultdict(list))
 
   def _locToNextElement(self, loc):
     for i in self.element_list:
@@ -401,25 +409,35 @@ class JavaFileTree(object):
     self._insertAbove(self.main_class, '@RunWith(%s.class)' % runner_name)
 
   def removeExtends(self):
-    self._replaceImport(
-        self.super_class_name, self.mapping.get(self.super_class_name)['rule'])
+    self._replaceImport(self.super_class_name, self.rule_dict.get('rule'))
     self._replaceString(r'extends .*? {', '{',
                         element=self.main_class, flags=re.DOTALL)
 
   def addTestAnnotation(self):
-    for m in self.main_element_table[model.MethodDeclaration]:
+    for m in self.main_element_table.get(model.MethodDeclaration, []):
       if m.name.startswith('test'):
         self._insertAbove(m, '@Test')
         self._addImport('org.junit.Test')
 
   def insertActivityTestRuleTest(self):
-    if self.mapping and self.mapping.get(self.super_class_name):
-      self._insertActivityTestRule(
-          self.mapping.get(self.super_class_name)['rule_var'],
-          self.mapping.get(self.super_class_name)['instan'])
+    if self.mapping and len(self.rule_dict) != 0:
+      self._insertActivityTestRule(self.rule_dict['rule_var'], self.rule_dict['instan'])
+
+  def importTypes(self):
+    for i in self.rule_dict['types']:
+      for x in self.element_list:
+        if isinstance(x, model.Annotation) and x.name.value == i:
+          self._addImport(
+              '.'.join([self.rule_dict['package'], self.rule_dict['rule'], i]))
+        if isinstance(x, model.InstanceCreation) and x.type.name.value == i:
+          self._addImport(
+              '.'.join([self.rule_dict['package'], self.rule_dict['rule'], i]))
 
   def changeApis(self, activity_rule='mActivityTestRule'):
-    for m in self.main_element_table[model.MethodInvocation]:
+    if self.main_element_table.get(model.MethodInvocation) is None:
+      import ipdb
+      ipdb.set_trace()
+    for m in self.main_element_table.get(model.MethodInvocation, []):
       if self._isInherited(m):
         if self.mapping and self.mapping.get(self.super_class_name):
           if (m.name in self.mapping[self.super_class_name]['api'] or
@@ -461,10 +479,18 @@ def AnalyzeMapping(java_parser, mapping):
           'java.lang.Object', 'ActivityTestRule'] else None})
   return mapping
 
-def ConvertDirectory(directory, java_parser, mapping, save_as_new=False):
+def ConvertDirectory(directory, java_parser, mapping, save_as_new=False,
+                     skip=None):
+  skip_files = []
+  if skip:
+    with open(os.path.abspath(skip)) as f:
+      skip_files = json.loads(f.read()).get('tests')
   for (dirpath, _, filenames) in os.walk(directory):
     for filename in filenames:
-      if filename.endswith('Test.java'):
+      if filename.endswith('Test.java') and filename not in skip_files:
+        if filename == 'InputDialogContainerTest.java':
+          import ipdb
+          ipdb.set_trace()
         ConvertFile(
             os.path.join(dirpath, filename), java_parser, mapping, save_as_new)
 
@@ -498,6 +524,7 @@ def main():
                                action='store_true', help='Save as a new file')
   argument_parser.add_argument('-d', '--directory',
                                help='Directory where all java file lives')
+  argument_parser.add_argument('-s', '--skip', help='skip files')
   argument_parser.add_argument(
       '-m', '--mapping-file', dest='mapping_file', required=True,
       help='json file that maps all the TestBase to TestRule info')
@@ -517,7 +544,7 @@ def main():
                 save_as_new=arguments.save_as_new)
   else:
     ConvertDirectory(arguments.directory, java_parser, mapping,
-                     save_as_new=arguments.save_as_new)
+                     save_as_new=arguments.save_as_new, skip=arguments.skip)
 
   # ConvertFile('/usr/local/google/home/yolandyan/Code/clankium/src/content/shell/android/javatests/src/org/chromium/content_shell_apk/ContentShellShellManagementTest.java.old', java_parser, api_mapping)
 
