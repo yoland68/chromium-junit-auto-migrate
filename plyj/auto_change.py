@@ -38,6 +38,8 @@ _SPECIAL_INSTRUMENTATION_TEST_CASE_APIS = {
     'getActivity',
 }
 
+_SPCIAL_METHOD = {'runTestOnUiThread', 'getInstrumentation'}
+
 _TEST_RULE_METHODS = {'run', 'apply', 'evaluate'}
 
 class ElementWrapper(object):
@@ -450,7 +452,7 @@ class JavaFileTree(object):
                 element=m,
                 optional=False)
 
-          elif m.name in _ASSERTION_METHOD_SET:
+          elif m.name in _ASSERTION_METHOD_SET or m.name in _SPCIAL_METHOD:
             continue
           else:
             logging.warning('I do not know how to handle this method call: %s' %
@@ -487,10 +489,7 @@ def ConvertDirectory(directory, java_parser, mapping, save_as_new=False,
       skip_files = json.loads(f.read()).get('tests')
   for (dirpath, _, filenames) in os.walk(directory):
     for filename in filenames:
-      if filename.endswith('Test.java') and filename not in skip_files:
-        if filename == 'InputDialogContainerTest.java':
-          import ipdb
-          ipdb.set_trace()
+      if filename.endswith('Test.java') and os.path.join(dirpath, filename) not in skip_files:
         ConvertFile(
             os.path.join(dirpath, filename), java_parser, mapping, save_as_new)
 
@@ -508,6 +507,7 @@ def ConvertFile(filepath, java_parser, api_mapping, save_as_new=False):
     f.replaceInstrumentationApis()
     f.addClassRunner()
     f.addTestAnnotation()
+    f.changeRunTestOnUiThread()
     f.insertActivityTestRuleTest()
     f.changeApis()
     if save_as_new:
