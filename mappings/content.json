@@ -1,5 +1,6 @@
 {
     "ContentShellTestBase": {
+        "package": "org.chromium.content_shell_apk",
         "location": "content/shell/android/javatests/src/org/chromium/content_shell_apk/ContentShellActivityTestRule.java",
         "rule_var": "ContentShellActivityTestRule",
         "rule": "ContentShellActivityTestRule",
@@ -9,6 +10,7 @@
         }
     },
     "JavaBridgeTestBase": {
+        "package": "org.chromium.content.browser",
         "location": "content/public/android/javatests/src/org/chromium/content/browser/JavaBridgeActivityTestRule.java",
         "rule_var": "JavaBridgeActivityTestRule",
         "rule": "JavaBridgeActivityTestRule",
@@ -16,6 +18,7 @@
         "special_method_change": {}
     },
     "NativeLibraryTestBase": {
+        "package": "org.chromium.content.browser.test",
         "location": "content/public/test/android/javatests/src/org/chromium/content/browser/test/NativeLibraryTestRule.java",
         "rule_var": "NativeLibraryTestRule",
         "rule": "NativeLibraryTestRule",
@@ -23,6 +26,7 @@
         "special_method_change": {}
     },
     "ContentDetectionTestBase": {
+        "package": "org.chromium.content.browser",
         "location": "content/public/android/javatests/src/org/chromium/content/browser/ContentDetectionActivityTestRule.java",
         "rule_var": "ContentDetectionActivityTestRule",
         "rule": "ContentDetectionActivityTestRule",
