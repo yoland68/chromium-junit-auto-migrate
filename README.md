@@ -1,6 +1,6 @@
 # Chromium JUnit4 Auto Change Script
 The purpose of this script is to help tokenize and parse instrumentation
-javatests that were based in JUNit3 and automatically refactor them to JUnit4
+javatests that were based in JUnit3 and automatically refactor them to JUnit4
 style javatests.
 
 The script is based on [PLY](http://www.dabeaz.com/ply/) (a lex/yacc implementation
