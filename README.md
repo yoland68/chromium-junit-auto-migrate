@@ -46,6 +46,7 @@ It finds the API calls, annotations, class declaration and other componenets tha
 #Caveats
 There are a couple of things this script **can not** do for you
 
+0. **TEST WILL NOT JUST WORK, PLEASE TRY IT BEFORE LANDING**
 1. Auto convert tests that rely on test thread to have message handler (Error message: `java.lang.RuntimeException: Can't create handler inside thread that has not called Looper.prepare()`). This is because AndroidJUnitRunner prevents any Handler from being created on the Instrumentation worker thread. In terms solution, one should try running whatever parts that causes these runtime errors on UI thread. Check this issue for more detail on AndroidJUnitRunner Handler issue: [link](https://github.com/skyisle/android-test-kit/issues/121)
 
 2. [`assertEquals(float a, float b)`](http://junit.org/junit4/javadoc/latest/org/junit/Assert.html), this is deprecated in JUnit4 Assert class, and it is replaced by assertEquals(float a, float b, double delta). This script does not auto change this API because no default delta value is provided. **Beware that despite Assert.assertEquals(float a, float b) is only deprecated, in android instrumentation tests, it will fail the assertion!** For more on this issue: [link](http://junit.org/junit4/javadoc/latest/org/junit/Assert.html)
