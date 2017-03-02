@@ -8,17 +8,17 @@ in python) and [PLYJ](https://github.com/musiKk/plyj/) (Java 7 parser written in
 
 #Actions
 
-1. replace year: replace copyright year to 2017
-2. remove extends: remove inheritance in tests and imported packages
-3. change setUp: add @Before annotation to `setUp()`, change it to public (required by BlockJUnit4ClassRunner), remove `super.setUp()` call
-4. change Assertions: find all the assertion calls and change them to use new [Assert class](http://junit.org/junit4/javadoc/latest/org/junit/Assert.html)
-5. replace instrumentation calls: replace `getInstrumentation()` with `InstrumentationRegistry.getInstrumentation()`, `getContent()` with `InstrumentationRegistry.getInstrumentation()`.
-6. add `@RunWith(BaseJUnit4ClassRunner.class)` and import the package
-7. add `@Test` to every test method
-8. insert TestRule or ActivityTestRule at the beginning of the test file (e.g. `@Rule public MyTestRule mRule = new MyTestRule();`)
-9. change `runTestOnUiThread(Runnable r)` to `mActivityTestRule.runOnUiThread()`
-10. import any inherited classes, annotations, interfaces
-11. change API calls based on the provided JSON file (e.g. XTestBase.java is refactored to be XActivityTestRule.java, any parent method calls (`methodX()`) in tests that extends from XTestBase would be refactored to `mActivityTestRule.methodX()`
+1. **Replace year**: replace copyright year to 2017
+2. **Remove extends**: remove inheritance in tests and imported packages
+3. **Change setUp**: add @Before annotation to `setUp()`, change it to public (required by BlockJUnit4ClassRunner), remove `super.setUp()` call
+4. **Change Assertions**: find all the assertion calls and change them to use new [Assert class](http://junit.org/junit4/javadoc/latest/org/junit/Assert.html)
+5. **Replace instrumentation calls**: replace `getInstrumentation()` with `InstrumentationRegistry.getInstrumentation()`, `getContent()` with `InstrumentationRegistry.getInstrumentation()`.
+6. **Add `@RunWith(BaseJUnit4ClassRunner.class)`** and import the package
+7. **Add `@Test`** to every test method
+8. **Insert TestRule** or ActivityTestRule at the beginning of the test file (e.g. `@Rule public MyTestRule mRule = new MyTestRule();`)
+9. **Change `runTestOnUiThread(Runnable r)`** to `mActivityTestRule.runOnUiThread()`
+10. **Import any inherited** classes, annotations, interfaces
+11. **Change API calls** based on the provided JSON file (e.g. XTestBase.java is refactored to be XActivityTestRule.java, any parent method calls (`methodX()`) in tests that extends from XTestBase would be refactored to `mActivityTestRule.methodX()`
 
 
 #Usage
