@@ -32,6 +32,8 @@ Run the following
 `[Directory]` is which directory to convert, `[MAPPING_JSON]` is the path to
 a json file that maps TestBase classes to TestRules (for detail of how JUnit4 is different from JUnit3, check [TBA]())
 
+All the available mappings is stored in `mappings/`
+
 If `[MAPPING_JSON]` is not provided, the script would only be able to change any tests that extends from InstrumentationTestCase.
 
 #How it works
