@@ -3,7 +3,7 @@ The purpose of this script is to help tokenize and parse instrumentation
 javatests that were based in JUNit3 and automatically refactor them to JUnit4
 style javatests.
 
-The script is based on [PLY](www.dabeaz.com/ply/) (a lex/yacc implementation
+The script is based on [PLY](http://www.dabeaz.com/ply/) (a lex/yacc implementation
 in python) and [PLYJ](https://github.com/musiKk/plyj/) (Java 7 parser written in Python based on ply)
 
 #Usage
