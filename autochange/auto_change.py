@@ -555,7 +555,6 @@ def ConvertFile(filepath, java_parser, api_mapping, save_as_new=False,
 
 
 def main():
-  #TODO: add argparse
   argument_parser = argparse.ArgumentParser()
   argument_parser.add_argument('-f', '--java-file', help='Java file')
   argument_parser.add_argument('-n', '--save-as-new', default=False,
@@ -585,8 +584,6 @@ def main():
   else:
     ConvertDirectory(arguments.directory, java_parser, mapping,
                      save_as_new=arguments.save_as_new, skip=arguments.skip)
-
-  # ConvertFile('/usr/local/google/home/yolandyan/Code/clankium/src/content/shell/android/javatests/src/org/chromium/content_shell_apk/ContentShellShellManagementTest.java.old', java_parser, api_mapping)
 
 if __name__ == '__main__':
   main()
