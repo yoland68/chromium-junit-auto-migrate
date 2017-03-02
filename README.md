@@ -22,6 +22,7 @@ in python) and [PLYJ](https://github.com/musiKk/plyj/) (Java 7 parser written in
 
 
 #Usage
+
 Run the following
 
     pip install ply
@@ -43,10 +44,18 @@ It tokenizes and parses the java file so it would be easy to search for java cod
 
 It finds the API calls, annotations, class declaration and other componenets that are associated to the migration and make the change
 
-#Caveats
+#Success rate
+
+For `src/content` ([CL](https://codereview.chromium.org/2708243004)), I was able to auto change 45 test files out of 50 without compiling errors (the manual fix for that is minimal)
+After a few min manual fix, when running these tests, 387 out of 429 test methods passes (90.2%), 36 out of 50 test files passes (72%)
+
+For `src/base/javatests`, 100% test was able to compile after script run, 22 out of 25 tests runs successfully (88%)
+
+
+#Know issues
 There are a couple of things this script **can not** do for you
 
-0. **TEST WILL NOT JUST WORK, PLEASE TRY COMPILING AND RUNNING THEM FIRST**
+0. **TEST WILL NOT JUST WORK AFTER AUTO CONVERT, PLEASE TRY COMPILING AND RUNNING THEM FIRST**
 1. Auto convert tests that rely on test thread to have message handler (Error message: `java.lang.RuntimeException: Can't create handler inside thread that has not called Looper.prepare()`). This is because AndroidJUnitRunner prevents any Handler from being created on the Instrumentation worker thread. In terms solution, one should try running whatever parts that causes these runtime errors on UI thread. Check this issue for more detail on AndroidJUnitRunner Handler issue: [link](https://github.com/skyisle/android-test-kit/issues/121)
 
 2. [`assertEquals(float a, float b)`](http://junit.org/junit4/javadoc/latest/org/junit/Assert.html), this is deprecated in JUnit4 Assert class, and it is replaced by assertEquals(float a, float b, double delta). This script does not auto change this API because no default delta value is provided. **Beware that despite Assert.assertEquals(float a, float b) is only deprecated, in android instrumentation tests, it will fail the assertion!** For more on this issue: [link](http://junit.org/junit4/javadoc/latest/org/junit/Assert.html)
