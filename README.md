@@ -10,7 +10,8 @@ in python) and [PLYJ](https://github.com/musiKk/plyj/) (Java 7 parser written in
 Run the following
 
     pip install ply
-    git clone https://github.com/yoland68/chromium-junit-auto-migrate.git "$CLANKIUM"/autochange
+    git clone https://github.com/yoland68/chromium-junit-auto-migrate.git "$CLANKIUM_SRC"/autochange
+    cd "$CLANKIUM_SRC"
     python autochange/autochange/auto_change.py -d [Directory] -m [MAPPING_JSON]
 
 `[Directory]` is which directory to convert, `[MAPPING_JSON]` is the path to
@@ -22,10 +23,11 @@ If `[MAPPING_JSON]` is not provided, the script would only be able to change any
 The script would find all the java file that are named `*Test.java`
 
 It tokenizes and parses them so it would be easy to search for java code by its type (e.g. find all methods invocation that are named `XYZ` that are not declared locally), 
-get the code snippet's beginning and end to search replace all the JUnit3 test component.
+
+It finds the API calls, annotations, class declaration and other componenets that are associated to the migration and make the change
 
 #Caveats
-There are a couple of things this script can not do for you
+There are a couple of things this script **can not** do for you
 
 1. Auto convert tests that rely on test thread to have message handler (Error message: `java.lang.RuntimeException: Can't create handler inside thread that has not called Looper.prepare()`). This is because AndroidJUnitRunner prevents any Handler from being created on the Instrumentation worker thread. In terms solution, one should try running whatever parts that causes these runtime errors on UI thread. Check this issue for more detail on AndroidJUnitRunner Handler issue: [link](https://github.com/skyisle/android-test-kit/issues/121)
 2. assertEquals(float a, float b), this is deprecated in JUnit4 Assert library, and it is replaced by assertEquals(float a, float b, double delta). This script does not auto change this API because no default delta value is provided. **Beware that despite Assert.assertEquals(float a, float b) is only deprecated, in android instrumentation tests, it will fail the assertion!** For more on this issue: [link](http://junit.org/junit4/javadoc/latest/org/junit/Assert.html)
