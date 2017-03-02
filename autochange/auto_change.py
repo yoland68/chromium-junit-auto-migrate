@@ -128,7 +128,10 @@ class JavaFileTree(object):
         self._main_element_table = TraverseTree(self._tree)
     assert len(self._element_list) > 0
 
-    self.mapping = api_mapping
+    if api_mapping:
+      self.mapping = api_mapping
+    else:
+      self.mapping = {}
 
     self.super_class_name = 'java.lang.Object'
     if len(self._element_table.get(model.ClassDeclaration, [])) > 0:
@@ -561,7 +564,7 @@ def main():
                                help='Directory where all java file lives')
   argument_parser.add_argument('-s', '--skip', help='skip files')
   argument_parser.add_argument(
-      '-m', '--mapping-file', dest='mapping_file', required=True,
+      '-m', '--mapping-file', dest='mapping_file',
       help='json file that maps all the TestBase to TestRule info')
   arguments = argument_parser.parse_args(sys.argv[1:])
 
@@ -571,9 +574,11 @@ def main():
   logger = logging.getLogger('parser_logger')
   logger.setLevel(logging.ERROR)
   java_parser = parser.Parser(logger)
-  with open(os.path.abspath(arguments.mapping_file), 'r') as f:
-    mapping = json.loads(f.read())
-    mapping = AnalyzeMapping(java_parser, mapping)
+  mapping = None
+  if arguments.mapping_file:
+    with open(os.path.abspath(arguments.mapping_file), 'r') as f:
+      mapping = json.loads(f.read())
+      mapping = AnalyzeMapping(java_parser, mapping)
   if arguments.java_file:
     ConvertFile(arguments.java_file, java_parser, mapping,
                 save_as_new=arguments.save_as_new)
