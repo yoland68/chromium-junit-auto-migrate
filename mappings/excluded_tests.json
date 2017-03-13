@@ -1,5 +1,7 @@
 {
     "tests": [
         "content/public/android/javatests/src/org/chromium/content/browser/input/ImeTest.java",
-        "content/public/android/javatests/src/org/chromium/content/browser/input/ImeLollipopTest.java"]
+        "content/public/android/javatests/src/org/chromium/content/browser/input/ImeLollipopTest.java",
+        "chrome/android/javatests/src/org/chromium/chrome/browser/banners/InstallerDelegateTest.java"
+    ]
 }

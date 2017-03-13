@@ -13,7 +13,7 @@ import sys
 
 import codecs
 
-_YEAR_PATTERN = re.compile(r'^(\/\/ Copyright) 20\d\d')
+_YEAR_PATTERN = re.compile(r'^(\/\/ Copyright) 2017')
 
 _ASSERTION_METHOD_SET = {
     'assertEquals',
@@ -368,7 +368,11 @@ class JavaFileTree(object):
     for m in self.element_table[model.MethodInvocation]:
       if m.name == 'runTestOnUiThread' and not self._isDeclaredLocally(m):
         self._replaceString(
-            'runTestOnUiThread', rule_var_name+'.'+'runOnUiThread', element=m)
+        'runTestOnUiThread',
+        'InstrumentationRegistry.getInstrumentation().runOnMainSync',
+        element=m)
+#         self._replaceString(
+            # 'runTestOnUiThread', rule_var_name+'.'+'runOnUiThread', element=m)
 
   def isJUnit4(self):
     """Check if the test class is already JUnit4 by checking its super class"""
@@ -376,7 +380,7 @@ class JavaFileTree(object):
 
   def replaceYear(self):
     """Change copyright year to 2017"""
-    self._content = _YEAR_PATTERN.sub(r'\1 2017', self._content, count=1)
+    self._content = _YEAR_PATTERN.sub(r'\1 2015', self._content, count=1)
 
   def changeSetUp(self):
     for m in self.element_table[model.MethodDeclaration]:
@@ -384,14 +388,14 @@ class JavaFileTree(object):
         self._replaceString('protected', 'public', element=m, optional=True)
         self._insertAbove(m, '@Before')
         self._addImport('org.junit.Before')
-        self._replaceString(r' *@Override', '', element=m, optional=True)
+        self._replaceString(r' *@Override\n', '', element=m, optional=True)
         self._replaceString(
             r' *super.setUp\(.*\); *\n', '', element=m, optional=True)
       if m.name == 'tearDown':
         self._replaceString('protected', 'public', element=m, optional=True)
         self._insertAbove(m, '@After')
         self._addImport('org.junit.After')
-        self._replaceString(r' *@Override', '', element=m, optional=True)
+        self._replaceString(r' *@Override\n', '', element=m, optional=True)
         self._replaceString(
             r' *super.tearDown\(.*\) *;\n', '', element=m, optional=True)
 
@@ -424,6 +428,14 @@ class JavaFileTree(object):
       self._addImport(self.rule_dict['package'] + '.' + self.rule_dict['rule'])
     self._replaceString(r'extends .*? {', '{',
                         element=self.main_class, flags=re.DOTALL)
+
+
+  def changeMinSdkAnnotation(self):
+    for a in self.main_element_table.get(model.Annotation):
+      if a.name == 'MinAndroidSdkLevel':
+        self._replaceString(r'@MinAndroidSdkLevel\((.*)\)', '\1', element=a)
+        self._removeImport('org.chromium.base.test.util.MinAndroidSdkLevel')
+        self._addImport('android.support.test.filters.SdkSuppress')
 
   def addTestAnnotation(self):
     for m in self.main_element_table.get(model.MethodDeclaration, []):
@@ -536,22 +548,22 @@ def ConvertFile(filepath, java_parser, api_mapping, save_as_new=False,
   logging.info('current file is %s' % filepath)
   if f.isJUnit4():
     logging.info('%s is already junit 4' % filepath)
-  else:
-    f.replaceYear()
+  elif f.super_class_name == 'InstrumentationTestCase':
     f.removeExtends()
     f.changeSetUp()
     f.changeAssertions()
     f.replaceInstrumentationApis()
     f.addClassRunner()
     f.addTestAnnotation()
+    f.changeMinSdkAnnotation()
     f.changeRunTestOnUiThread()
-    f.insertActivityTestRuleTest()
+    # f.insertActivityTestRuleTest()
     f.importTypes()
-    f.changeApis()
+    # f.changeApis()
     if save_as_new:
       filepath += '.new'
-    with codecs.open(filepath, encoding='utf-8', mode='w') as f_new:
-      f_new.write(f.content)
+  with codecs.open(filepath, encoding='utf-8', mode='w') as f_new:
+    f_new.write(f.content)
 
 
 def main():
