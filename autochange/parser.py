@@ -404,7 +404,7 @@ class ExpressionParser(object):
     def p_primary_no_new_array3(self, p):
         '''primary_no_new_array : name '.' THIS
                                 | name '.' SUPER'''
-        p[1].append_name(p[3], lineno=p.lineno(0), lexpos=p.lexpos(0), lexspan=p.lexspan(0))
+        p[1].append_name(p[3])
         p[0] = p[1]
 
     def p_primary_no_new_array4(self, p):
