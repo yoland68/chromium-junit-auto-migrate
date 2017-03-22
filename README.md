@@ -6,7 +6,8 @@ style javatests.
 The script is based on [PLY](http://www.dabeaz.com/ply/) (a lex/yacc implementation
 in python) and [PLYJ](https://github.com/musiKk/plyj/) (Java 7 parser written in Python based on ply)
 
-#Actions
+
+## Actions
 
 1. **Replace year**: replace copyright year to 2017
 2. **Remove extends**: remove inheritance in tests and imported packages
@@ -21,7 +22,7 @@ in python) and [PLYJ](https://github.com/musiKk/plyj/) (Java 7 parser written in
 11. **Change API calls** based on the provided JSON file (e.g. XTestBase.java is refactored to be XActivityTestRule.java, any parent method call, such as`methodX()`, in javatests that extends from XTestBase would be refactored to `mActivityTestRule.methodX()`
 
 
-#Usage
+## Usage
 
 Run the following
 
@@ -37,14 +38,14 @@ All the available mappings is stored in `mappings/`
 
 If `[MAPPING_JSON]` is not provided, the script would only be able to change any tests that extends from InstrumentationTestCase.
 
-#How it works
+## How it works
 The script would find all the java file that are named `*Test.java` in a given directory
 
 It tokenizes and parses the java file so it would be easy to search for java code by its type (e.g. find all methods invocation that are named `XYZ` that are not declared locally), 
 
 It finds the API calls, annotations, class declaration and other componenets that are associated to the migration and make the change
 
-#Success rate
+## Success rate
 
 For `src/content` ([CL](https://codereview.chromium.org/2708243004)), I was able to auto change 45 test files out of 50 without compiling errors (the manual fix for that is minimal)
 After a few min manual fix, when running these tests, 387 out of 429 test methods passes (90.2%), 36 out of 50 test files passes (72%)
@@ -52,7 +53,7 @@ After a few min manual fix, when running these tests, 387 out of 429 test method
 For `src/base/javatests`, 100% test was able to compile after script run, 22 out of 25 tests runs successfully (88%)
 
 
-#Know issues
+## Known issues
 There are a couple of things this script **can not** do for you
 
 0. **TEST WILL NOT JUST WORK AFTER AUTO CONVERT, PLEASE TRY COMPILING AND RUNNING THEM FIRST**
@@ -71,5 +72,5 @@ There are a couple of things this script **can not** do for you
 7. Java 7 only
 
 
-#Bug
+## Bug
 please email +yolandyan about any of the bug you've encounted or create issue in this repo
