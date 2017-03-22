@@ -273,7 +273,7 @@ class JavaFileTree(object):
     self.offset_table[element.lexpos] += len(insertion)
 
   def _replaceString(self, pattern, replacement, element=None, optional=True,
-                     start=None, end=None, flags=0):
+                     start=None, end=None, flags=0, verbose=False):
     if start is None:
       start = self._lexposToLoc(element.lexpos)
     if end is None:
@@ -290,6 +290,10 @@ class JavaFileTree(object):
     next_element = self._locToNextElement(change_loc)
     self.content = (
         self.content[:start] + content_replacement + self._content[end+1:])
+    if verbose:
+      logging.warn("Before: " + content_string)
+      logging.warn("After : " + content_replacement)
+
     if next_element is not None:
       self.offset_table[next_element.lexpos] = (
           len(content_replacement) - len(content_string))
@@ -402,9 +406,20 @@ class JavaFileTree(object):
   def changeAssertions(self):
     for m in self.element_table[model.MethodInvocation]:
       if m.name in _ASSERTION_METHOD_SET and m.target is None:
-        self._addImport('org.junit.Assert')
-        self._removeImport('junit.framework.Assert')
-        self._insertInfront(m, 'Assert.')
+        if (m.name == 'assertEquals' and
+            any(i for i in m.arguments if isinstance(i, model.Literal) and
+                re.match("^\d+?\.\d+$", i.value) is not None)):
+          self._addImport('org.junit.Assert')
+          self._replaceString(
+              r'assertEquals\((.*)\)', r'Assert.assertEquals(\1, 0)', element=m,
+              optional=False, verbose=True)
+          import ipdb
+          ipdb.set_trace()
+          logging.warn(self._filepath);
+        else:
+          self._addImport('org.junit.Assert')
+          self._removeImport('junit.framework.Assert')
+          self._insertInfront(m, 'Assert.')
 
   def replaceInstrumentationApis(self):
     for m in self.element_table[model.MethodInvocation]:
@@ -548,7 +563,7 @@ def ConvertFile(filepath, java_parser, api_mapping, save_as_new=False,
   logging.info('current file is %s' % filepath)
   if f.isJUnit4():
     logging.info('%s is already junit 4' % filepath)
-  elif f.super_class_name == 'InstrumentationTestCase':
+  else:
     f.removeExtends()
     f.changeSetUp()
     f.changeAssertions()
@@ -557,9 +572,10 @@ def ConvertFile(filepath, java_parser, api_mapping, save_as_new=False,
     f.addTestAnnotation()
     f.changeMinSdkAnnotation()
     f.changeRunTestOnUiThread()
-    # f.insertActivityTestRuleTest()
     f.importTypes()
-    # f.changeApis()
+    if f.super_class_name != 'InstrumentationTestCase':
+      f.insertActivityTestRuleTest()
+      f.changeApis()
     if save_as_new:
       filepath += '.new'
   with codecs.open(filepath, encoding='utf-8', mode='w') as f_new:
