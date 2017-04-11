@@ -15,6 +15,8 @@ import codecs
 
 _YEAR_PATTERN = re.compile(r'^(\/\/ Copyright) 2017')
 
+_FLOAT_PATTERN = re.compile(r'^\d+?\.\d+f?$')
+
 _ASSERTION_METHOD_SET = {
     'assertEquals',
     'assertFalse',
@@ -49,6 +51,13 @@ class ElementWrapper(object):
     assert isinstance(element, model.SourceElement)
     self.element = element
     self.parent = parent
+
+def _SkipIt(f):
+  if f.isJUnit4():
+    logging.info('%s is already JUnit4' % f._filepath)
+    return True
+  if f.mapping.get(f.super_class_name) is None:
+    return True
 
 def _ReturnReplacement(pattern_string, replacement, string, flags=0):
   pattern = re.compile(pattern_string, flags=flags)
@@ -193,6 +202,41 @@ class JavaFileTree(object):
       if declaration.name == method.name:
         return True
 
+  def _argumentIsFloatOrDouble(self, element):
+    assert isinstance(element, model.MethodInvocation)
+    for arg in element.arguments:
+      if isinstance(arg, model.Literal):
+        return _FLOAT_PATTERN.match(arg.value) is not None
+      elif isinstance(arg, model.Multiplicative):
+        if (_FLOAT_PATTERN.match(arg.lhs.value) or
+            _FLOAT_PATTERN.match(arg.rhs.value)):
+          return True
+      elif isinstance(arg, model.Name):
+        possible_vars = [
+            i for i in self.element_table.get(model.VariableDeclaration, []) if
+            i.variable_declarators[0].variable.name == arg.value and
+            i.lineno < arg.lineno]
+        if len(possible_vars) == 0:
+          return False
+        current_var = possible_vars[0]
+        for i in possible_vars:
+          if arg.lineno - i.lineno < arg.lineno - current_var.lineno:
+            current_var = i
+        if isinstance(current_var.type, model.Type):
+          if current_var.type.name.value in ['Double', 'Float']:
+            return True
+        else:
+          if current_var.type in ['double', 'float', 'Double', 'Float']:
+            return True
+          else:
+            return False
+      elif isinstance(arg, model.MethodInvocation):
+        if any(i for i in self.element_table[model.MethodDeclaration] if
+               i.name == arg.name and i.return_type in
+               ['double', 'float', 'Double', 'Float']):
+          return True
+    return False
+
   def _isInherited(self, method):
     assert type(method) == model.MethodInvocation
     if method.target is not None:
@@ -291,8 +335,8 @@ class JavaFileTree(object):
     self.content = (
         self.content[:start] + content_replacement + self._content[end+1:])
     if verbose:
-      logging.warn("Before: " + content_string)
-      logging.warn("After : " + content_replacement)
+      logging.info("Before: " + content_string)
+      logging.info("After : " + content_replacement)
 
     if next_element is not None:
       self.offset_table[next_element.lexpos] = (
@@ -309,11 +353,12 @@ class JavaFileTree(object):
           return self.element_list[i+1]
 
   def _insertActivityTestRule(
-      self, var_type, instantiation, var='mActivityTestRule'):
+      self, var_type, instantiation, var):
     if self.main_class.extends is not None:
       element = self.main_class.extends
     else:
       element = self.main_class
+    self._insertBelow(element, '\n', auto_indentation=False);
     self._insertBelow(
         element,
         '    public %s %s = new %s;' % (
@@ -321,6 +366,7 @@ class JavaFileTree(object):
         auto_indentation=False)
     self._insertBelow(element, '\n    @Rule', auto_indentation=False)
     self._addImport('org.junit.Rule')
+
 
   def _findNextParallelElementIndex(self, element):
     for i, j in enumerate(self.element_table[type(element)]):
@@ -368,7 +414,20 @@ class JavaFileTree(object):
     self._replaceString(r'import.*%s; *\n' % import_name, '', start=start,
                         end=end)
 
-  def changeRunTestOnUiThread(self, rule_var_name='mActivityTestRule'):
+  def changeUiThreadTest(self):
+    if any(i for i in self.element_table[model.Annotation]
+           if i.name.value == "UiThreadTest"):
+      self._removeImport('android.test.UiThreadTest')
+      self._addImport('android.support.test.annotation.UiThreadTest')
+      if (self.rule_dict is None or
+          (self.rule_dict and 'ActivityTestRule' not in
+           self.rule_dict['rule'])):
+        self._addImport('android.support.test.rule.UiThreadTestRule')
+        self._insertActivityTestRule(
+            'UiThreadTestRule', 'UiThreadTestRule()',
+            'mUiThreadTestRule')
+
+  def changeRunTestOnUiThread(self):
     for m in self.element_table[model.MethodInvocation]:
       if m.name == 'runTestOnUiThread' and not self._isDeclaredLocally(m):
         self._replaceString(
@@ -406,16 +465,12 @@ class JavaFileTree(object):
   def changeAssertions(self):
     for m in self.element_table[model.MethodInvocation]:
       if m.name in _ASSERTION_METHOD_SET and m.target is None:
-        if (m.name == 'assertEquals' and
-            any(i for i in m.arguments if isinstance(i, model.Literal) and
-                re.match("^\d+?\.\d+$", i.value) is not None)):
+        if (m.name == 'assertEquals' and len(m.arguments) == 2 and
+            self._argumentIsFloatOrDouble(m)):
           self._addImport('org.junit.Assert')
           self._replaceString(
               r'assertEquals\((.*)\)', r'Assert.assertEquals(\1, 0)', element=m,
-              optional=False, verbose=True)
-          import ipdb
-          ipdb.set_trace()
-          logging.warn(self._filepath);
+              optional=False, flags=re.DOTALL, verbose=True)
         else:
           self._addImport('org.junit.Assert')
           self._removeImport('junit.framework.Assert')
@@ -448,7 +503,7 @@ class JavaFileTree(object):
   def changeMinSdkAnnotation(self):
     for a in self.main_element_table.get(model.Annotation):
       if a.name == 'MinAndroidSdkLevel':
-        self._replaceString(r'@MinAndroidSdkLevel\((.*)\)', '\1', element=a)
+        self._replaceString(r'@MinAndroidSdkLevel\((.*)\)', r'@SdkSuppress\1', element=a)
         self._removeImport('org.chromium.base.test.util.MinAndroidSdkLevel')
         self._addImport('android.support.test.filters.SdkSuppress')
 
@@ -460,7 +515,9 @@ class JavaFileTree(object):
 
   def insertActivityTestRuleTest(self):
     if self.mapping and len(self.rule_dict) != 0:
-      self._insertActivityTestRule(self.rule_dict['rule_var'], self.rule_dict['instan'])
+      self._insertActivityTestRule(
+          self.rule_dict['rule_var'], self.rule_dict['instan'],
+          self.rule_dict['var'])
 
   def importTypes(self):
     for _, info in self.mapping.iteritems():
@@ -477,7 +534,8 @@ class JavaFileTree(object):
               self._addImport(
                   '.'.join([info['package'], info['rule'], i]))
 
-  def changeApis(self, activity_rule='mActivityTestRule'):
+  def changeApis(self):
+    activity_rule = self.rule_dict['var']
     for m in self.element_table.get(model.MethodInvocation, []):
       if self._isInherited(m):
         if self.mapping and self.mapping.get(self.super_class_name):
@@ -561,8 +619,8 @@ def ConvertFile(filepath, java_parser, api_mapping, save_as_new=False,
   file_tree = java_parser.parse_file(file(filepath))
   f = JavaFileTree(file_tree, filepath, api_mapping)
   logging.info('current file is %s' % filepath)
-  if f.isJUnit4():
-    logging.info('%s is already junit 4' % filepath)
+  if _SkipIt(f):
+    logging.info('%s is ignored' % filepath)
   else:
     f.removeExtends()
     f.changeSetUp()
@@ -573,6 +631,7 @@ def ConvertFile(filepath, java_parser, api_mapping, save_as_new=False,
     f.changeMinSdkAnnotation()
     f.changeRunTestOnUiThread()
     f.importTypes()
+    f.changeUiThreadTest()
     if f.super_class_name != 'InstrumentationTestCase':
       f.insertActivityTestRuleTest()
       f.changeApis()
