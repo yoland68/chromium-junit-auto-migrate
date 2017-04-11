@@ -449,12 +449,14 @@ class JavaFileTree(object):
   def changeSetUp(self):
     for m in self.element_table[model.MethodDeclaration]:
       if m.name == 'setUp':
+
         self._replaceString('protected', 'public', element=m, optional=True)
         self._insertAbove(m, '@Before')
         self._addImport('org.junit.Before')
         self._replaceString(r' *@Override\n', '', element=m, optional=True)
         self._replaceString(
-            r' *super.setUp\(.*\); *\n', '', element=m, optional=True)
+            r'super.setUp\(.*\); *\n', self._activityLaunchReplacement(),
+            element=m, optional=True)
       if m.name == 'tearDown':
         self._replaceString('protected', 'public', element=m, optional=True)
         self._insertAbove(m, '@After')
@@ -462,6 +464,19 @@ class JavaFileTree(object):
         self._replaceString(r' *@Override\n', '', element=m, optional=True)
         self._replaceString(
             r' *super.tearDown\(.*\) *;\n', '', element=m, optional=True)
+
+  def _activityLaunchReplacement(self):
+    for m in self.main_element_table[model.MethodDeclaration]:
+      if m.name == 'startMainActivity':
+        start = self._lexposToLoc(m.body[0].lexpos)
+        end = self._lexposToLoc(m.body[-1].lexend)
+        content = self.content[start:end+1]
+        self._replaceString(r'.*', '', element=m)
+        return content
+    import ipdb
+    ipdb.set_trace()
+    raise Exception('startMainActivity() is not found')
+
 
   def changeAssertions(self):
     for m in self.element_table[model.MethodInvocation]:
@@ -637,7 +652,7 @@ def ConvertFile(filepath, java_parser, api_mapping, save_as_new=False,
     f.changeMinSdkAnnotation()
     f.changeRunTestOnUiThread()
     f.importTypes()
-    f.changeUiThreadTest()
+    #f.changeUiThreadTest()
     if f.super_class_name != 'InstrumentationTestCase':
       f.insertActivityTestRuleTest()
       f.changeApis()
