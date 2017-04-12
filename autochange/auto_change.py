@@ -57,6 +57,7 @@ def _SkipIt(f):
     logging.info('%s is already JUnit4' % f._filepath)
     return True
   if f.mapping.get(f.super_class_name) is None:
+    logging.info('mapping does not contain files super class %s' % f.super_class_name)
     return True
 
 def _ReturnReplacement(pattern_string, replacement, string, flags=0):
@@ -298,7 +299,7 @@ class JavaFileTree(object):
       next_element = self._findNextElementIndex(next_element)
     self.offset_table[next_element.lexpos] += len(insertion)
 
-  def _insertAbove(self, element, partial_insertion):
+  def _insertAbove(self, element, partial_insertion, auto_indentation=True):
     index = self._lexposToLoc(element.lexpos)
     indentation = 0
     while self.content[index] != '\n':
@@ -307,7 +308,10 @@ class JavaFileTree(object):
       elif self.content[index] != ' ':
         indentation = 0
       index -= 1
-    insertion = ' ' * indentation + partial_insertion + '\n'
+    if auto_indentation:
+      insertion = ' ' * indentation + partial_insertion + '\n'
+    else:
+      insertion = partial_insertion + '\n'
     self._insertInBetween(insertion, index+1, index+1)
     self.offset_table[element.lexpos] += len(insertion)
 
@@ -354,17 +358,14 @@ class JavaFileTree(object):
 
   def _insertActivityTestRule(
       self, var_type, instantiation, var):
-    if self.main_class.extends is not None:
-      element = self.main_class.extends
-    else:
-      element = self.main_class
-    self._insertBelow(element, '\n', auto_indentation=False);
-    self._insertBelow(
+    element = self.main_class.body[0]
+    self._insertAbove(element, '\n    @Rule', auto_indentation=False)
+    self._insertAbove(
         element,
         '    public %s %s = new %s;' % (
             var_type, var, instantiation),
         auto_indentation=False)
-    self._insertBelow(element, '\n    @Rule', auto_indentation=False)
+    self._insertAbove(element, '\n', auto_indentation=False);
     self._addImport('org.junit.Rule')
 
 
@@ -542,7 +543,8 @@ class JavaFileTree(object):
           if (m.name in self.mapping[self.super_class_name]['api'] or
               m.name in _SPECIAL_INSTRUMENTATION_TEST_CASE_APIS):
             self._insertInfront(m, activity_rule+'.')
-          elif m.name in self.mapping[self.super_class_name]['special_method_change'].keys():
+          elif m.name in self.mapping[self.super_class_name].get(
+              'special_method_change',{}).keys():
             self._replaceString(
                 m.name,
                 activity_rule+'.'+self.mapping[self.super_class_name]['special_method_change'][m.name],
@@ -552,7 +554,7 @@ class JavaFileTree(object):
           elif m.name in _ASSERTION_METHOD_SET or m.name in _IGNORED_APIS:
             continue
           else:
-            logging.warning('I do not know how to handle this method call: %s' %
+            logging.info('I do not know how to handle this method call: %s' %
                           m.name)
 
 def _isPublicOrProtected(modifiers):
@@ -611,12 +613,16 @@ def ConvertFile(filepath, java_parser, api_mapping, save_as_new=False,
                 logging_level=logging.WARNING):
   log = logging.getLogger()
   filename = filepath.split('/')[-1]
-  f = logging.Formatter(filename + ': %(message)s')
+  f = logging.Formatter(filename + ':%(levelname)s: %(message)s')
   fh = logging.StreamHandler()
   fh.setLevel(logging_level)
   fh.setFormatter(f)
+  log.propagate = False
+  log.removeHandler(log.handlers[0])
+  log.setLevel(logging_level)
   log.addHandler(fh)
-  file_tree = java_parser.parse_file(file(filepath))
+  with open(filepath) as f:
+    file_tree = java_parser.parse_file(f)
   f = JavaFileTree(file_tree, filepath, api_mapping)
   logging.info('current file is %s' % filepath)
   if _SkipIt(f):
@@ -648,6 +654,7 @@ def main():
                                action='store_true', help='Save as a new file')
   argument_parser.add_argument('-d', '--directory',
                                help='Directory where all java file lives')
+  argument_parser.add_argument('-v', '--verbose', help='Log info', action='store_true')
   argument_parser.add_argument('-s', '--skip', help='skip files')
   argument_parser.add_argument(
       '-m', '--mapping-file', dest='mapping_file',
@@ -665,12 +672,16 @@ def main():
     with open(os.path.abspath(arguments.mapping_file), 'r') as f:
       mapping = json.loads(f.read())
       mapping = AnalyzeMapping(java_parser, mapping)
+  logging_level = logging.WARNING
+  if arguments.verbose:
+    logging_level = logging.INFO
   if arguments.java_file:
     ConvertFile(arguments.java_file, java_parser, mapping,
-                save_as_new=arguments.save_as_new)
+                save_as_new=arguments.save_as_new, logging_level=logging_level)
   else:
     ConvertDirectory(arguments.directory, java_parser, mapping,
-                     save_as_new=arguments.save_as_new, skip=arguments.skip)
+                     save_as_new=arguments.save_as_new, skip=arguments.skip,
+                     logging_level=logging_level)
 
 if __name__ == '__main__':
   main()
