@@ -56,6 +56,9 @@ def _SkipIt(f):
   if f.isJUnit4():
     logging.info('%s is already JUnit4' % f._filepath)
     return True
+  if 'abstract' in f.main_class.modifiers:
+    logging.warn('mapping does not contain files super class %s' % f.super_class_name)
+    return True
   if f.mapping.get(f.super_class_name) is None:
     logging.info('mapping does not contain files super class %s' % f.super_class_name)
     return True
@@ -136,7 +139,10 @@ class JavaFileTree(object):
       self._content = content
     self._element_list, self._element_table, self._main_element_list, \
         self._main_element_table = TraverseTree(self._tree)
-    assert len(self._element_list) > 0
+    #assert len(self._element_list) > 0
+    if len(self._element_list) <= 0:
+      import ipdb
+      ipdb.set_trace()
 
     if api_mapping:
       self.mapping = api_mapping
@@ -367,6 +373,7 @@ class JavaFileTree(object):
         auto_indentation=False)
     self._insertAbove(element, '\n', auto_indentation=False);
     self._addImport('org.junit.Rule')
+    self._addImport('org.chromium.chrome.browser.ChromeActivity')
 
 
   def _findNextParallelElementIndex(self, element):
@@ -418,15 +425,16 @@ class JavaFileTree(object):
   def changeUiThreadTest(self):
     if any(i for i in self.element_table[model.Annotation]
            if i.name.value == "UiThreadTest"):
-      self._removeImport('android.test.UiThreadTest')
-      self._addImport('android.support.test.annotation.UiThreadTest')
-      if (self.rule_dict is None or
-          (self.rule_dict and 'ActivityTestRule' not in
-           self.rule_dict['rule'])):
-        self._addImport('android.support.test.rule.UiThreadTestRule')
-        self._insertActivityTestRule(
-            'UiThreadTestRule', 'UiThreadTestRule()',
-            'mUiThreadTestRule')
+      logging.warn("There is @UiThreadTestAnnotation in this one")
+#       self._removeImport('android.test.UiThreadTest')
+      # self._addImport('android.support.test.annotation.UiThreadTest')
+      # if (self.rule_dict is None or
+          # (self.rule_dict and 'ActivityTestRule' not in
+           # self.rule_dict['rule'])):
+        # self._addImport('android.support.test.rule.UiThreadTestRule')
+        # self._insertActivityTestRule(
+            # 'UiThreadTestRule', 'UiThreadTestRule()',
+            # 'mUiThreadTestRule')
 
   def changeRunTestOnUiThread(self):
     for m in self.element_table[model.MethodInvocation]:
@@ -447,16 +455,18 @@ class JavaFileTree(object):
     self._content = _YEAR_PATTERN.sub(r'\1 2015', self._content, count=1)
 
   def changeSetUp(self):
+    set_up_exist = False
     for m in self.element_table[model.MethodDeclaration]:
       if m.name == 'setUp':
-
+        set_up_exist = True
         self._replaceString('protected', 'public', element=m, optional=True)
         self._insertAbove(m, '@Before')
         self._addImport('org.junit.Before')
         self._replaceString(r' *@Override\n', '', element=m, optional=True)
+        content_replacement = self._activityLaunchReplacement()
         self._replaceString(
-            r'super.setUp\(.*\); *\n', self._activityLaunchReplacement(),
-            element=m, optional=True)
+              r'super.setUp\(.*\); *\n', content_replacement+'\n',
+              element=m, optional=True)
       if m.name == 'tearDown':
         self._replaceString('protected', 'public', element=m, optional=True)
         self._insertAbove(m, '@After')
@@ -464,18 +474,33 @@ class JavaFileTree(object):
         self._replaceString(r' *@Override\n', '', element=m, optional=True)
         self._replaceString(
             r' *super.tearDown\(.*\) *;\n', '', element=m, optional=True)
+    if set_up_exist == False:
+      self._activityLaunchReplacement(switch_to_setUp=True)
 
-  def _activityLaunchReplacement(self):
-    for m in self.main_element_table[model.MethodDeclaration]:
-      if m.name == 'startMainActivity':
-        start = self._lexposToLoc(m.body[0].lexpos)
-        end = self._lexposToLoc(m.body[-1].lexend)
-        content = self.content[start:end+1]
-        self._replaceString(r'.*', '', element=m)
-        return content
-    import ipdb
-    ipdb.set_trace()
-    raise Exception('startMainActivity() is not found')
+
+  def _activityLaunchReplacement(self, switch_to_setUp = False):
+    try:
+      for m in self.main_element_table[model.MethodDeclaration]:
+        if m.name == 'startMainActivity':
+          if switch_to_setUp == True:
+            self._insertAbove(m, '@Before')
+            self._addImport('org.junit.Before')
+            self._replaceString(r' *@Override\n', '', element=m, optional=True)
+            self._replaceString('startMainActivity', 'setUp', element=m,
+                                optional=False)
+            return ''
+          else:
+            if len(m.body) == 0:
+              return ''
+            start = self._lexposToLoc(m.body[0].lexpos)
+            end = self._lexposToLoc(m.body[-1].lexend)
+            content = self.content[start:end+1]
+            self._replaceString(r'.*', '', element=m, flags=re.DOTALL)
+            return content
+    except Exception as e:
+      import ipdb
+      ipdb.set_trace()
+    raise Exception('startMainActivity() is not found in %s' % self._filepath)
 
 
   def changeAssertions(self):
@@ -515,6 +540,10 @@ class JavaFileTree(object):
     self._replaceString(r'extends .*? {', '{',
                         element=self.main_class, flags=re.DOTALL)
 
+
+  def removeConstructor(self):
+    if len(self.main_element_table[model.ConstructorDeclaration]) != 0:
+      self._replaceString('.*', '', element=self.main_element_table[model.ConstructorDeclaration][0], flags=re.DOTALL)
 
   def changeMinSdkAnnotation(self):
     for a in self.main_element_table.get(model.Annotation):
@@ -643,23 +672,27 @@ def ConvertFile(filepath, java_parser, api_mapping, save_as_new=False,
   if _SkipIt(f):
     logging.info('%s is ignored' % filepath)
   else:
-    f.removeExtends()
     f.changeSetUp()
+    with codecs.open(filepath, encoding='utf-8', mode='w') as f_new:
+      f_new.write(f.content)
+    with open(filepath) as f:
+      file_tree = java_parser.parse_file(f)
+    f = JavaFileTree(file_tree, filepath, api_mapping)
     f.changeAssertions()
+    f.removeConstructor()
     f.replaceInstrumentationApis()
     f.addClassRunner()
     f.addTestAnnotation()
     f.changeMinSdkAnnotation()
     f.changeRunTestOnUiThread()
     f.importTypes()
-    #f.changeUiThreadTest()
+    f.changeUiThreadTest()
+    f.removeExtends()
     if f.super_class_name != 'InstrumentationTestCase':
       f.insertActivityTestRuleTest()
       f.changeApis()
-    if save_as_new:
-      filepath += '.new'
-  with codecs.open(filepath, encoding='utf-8', mode='w') as f_new:
-    f_new.write(f.content)
+    with codecs.open(filepath, encoding='utf-8', mode='w') as f_new:
+      f_new.write(f.content)
 
 
 def main():
