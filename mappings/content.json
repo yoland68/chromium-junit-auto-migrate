@@ -27,15 +27,6 @@
         "rule": "NativeLibraryTestRule",
         "instan": "NativeLibraryTestRule()",
         "special_method_change": {}
-    },
-    "ContentDetectionTestBase": {
-        "package": "org.chromium.content.browser",
-        "location": "content/public/android/javatests/src/org/chromium/content/browser/ContentDetectionActivityTestRule.java",
-        "rule_var": "ContentDetectionActivityTestRule",
-        "var": "mActivityTestRule",
-        "rule": "ContentDetectionActivityTestRule",
-        "instan": "ContentDetectionActivityTestRule()",
-        "special_method_change": {}
     }
 }
 
