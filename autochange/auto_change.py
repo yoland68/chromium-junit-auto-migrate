@@ -56,9 +56,6 @@ def _SkipIt(f):
   if f.isJUnit4():
     logging.info('%s is already JUnit4' % f._filepath)
     return True
-  if f.mapping.get(f.super_class_name) is None:
-    logging.info('mapping does not contain files super class %s' % f.super_class_name)
-    return True
 
 def _ReturnReplacement(pattern_string, replacement, string, flags=0):
   pattern = re.compile(pattern_string, flags=flags)
