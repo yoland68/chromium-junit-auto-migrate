@@ -54,13 +54,13 @@ class ElementWrapper(object):
 
 def _SkipIt(f):
   if f.isJUnit4():
-    logging.info('%s is already JUnit4' % f._filepath)
+    logging.info('Skip: %s is already JUnit4' % f._filepath)
     return True
   if 'abstract' in f.main_class.modifiers:
-    logging.warn('mapping does not contain files super class %s' % f.super_class_name)
+    logging.warn('Skip: %s is abstract class' % f._filepath)
     return True
   if f.mapping.get(f.super_class_name) is None:
-    logging.info('mapping does not contain files super class %s' % f.super_class_name)
+    logging.info('Skip: mapping does not contain files super class %s' % f.super_class_name)
     return True
 
 def _ReturnReplacement(pattern_string, replacement, string, flags=0):
@@ -582,21 +582,22 @@ class JavaFileTree(object):
   def changeApis(self):
     activity_rule = self.rule_dict['var']
     for m in self.element_table.get(model.MethodInvocation, []):
-      if self._isInherited(m):
+      if self._isInherited(m) and m.target is None:
         if self.mapping and self.mapping.get(self.super_class_name):
-          if (m.name in self.mapping[self.super_class_name]['api'] or
+          if m.name in _ASSERTION_METHOD_SET or m.name in _IGNORED_APIS:
+            continue
+          elif (m.name in self.mapping[self.super_class_name]['api'] or
               m.name in _SPECIAL_INSTRUMENTATION_TEST_CASE_APIS):
             self._insertInfront(m, activity_rule+'.')
           elif m.name in self.mapping[self.super_class_name].get(
               'special_method_change',{}).keys():
             self._replaceString(
                 m.name,
-                activity_rule+'.'+self.mapping[self.super_class_name]['special_method_change'][m.name],
+                activity_rule+'.'+self.mapping[self.super_class_name][
+                    'special_method_change'][m.name],
                 element=m,
                 optional=False)
 
-          elif m.name in _ASSERTION_METHOD_SET or m.name in _IGNORED_APIS:
-            continue
           else:
             logging.info('I do not know how to handle this method call: %s' %
                           m.name)
