@@ -579,6 +579,15 @@ class JavaFileTree(object):
               self._addImport(
                   '.'.join([info['package'], info['rule'], i]))
 
+  def changeTouchCommonMethods(self):
+    for m in self.element_table.get(model.MethodInvocation, []):
+      if m.target is None and m.name in _TOUCH_COMMON_METHOD_DICT.keys():
+          self._replaceString('('+m.name+'\()',
+              r'TouchCommon.\1mActivityTestRule.getActivity(), '
+              % self.rule_dict['var'] if _TOUCH_COMMON_METHOD_DICT[m.name]
+              else r'TouchCommon.\1', element=m, optional=False)
+          self._addImport('org.chromium.content.browser.test.util.TouchCommon')
+
   def changeApis(self):
     activity_rule = self.rule_dict['var']
     for m in self.element_table.get(model.MethodInvocation, []):
