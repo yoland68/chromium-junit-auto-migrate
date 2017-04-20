@@ -24,7 +24,7 @@ _AGENT_DICT = {
 }
 
 def ConvertDirectory(directory, java_parser, agent_strings,
-										 save_as_new=False, logging_level=logging.WARNING):
+                     save_as_new=False, logging_level=logging.WARNING):
   agent = None
   for (dirpath, _, filenames) in os.walk(directory):
     for filename in filenames:
@@ -37,7 +37,7 @@ def ConvertFile(java_parser, agent_strings, whole_path, save_as_new,
                 previous_agent=None, logging_level=logging.WARNING):
   logger = SetLogger(logging_level, whole_path)
   agent = previous_agent
-  for agent_class in [i for i in agent_strings if
+  for agent_class in [_AGENT_DICT[i] for i in agent_strings if
                       _AGENT_DICT[i].filename_match(whole_path)]:
     agent = agent_class(java_parser, whole_path, logger=logger, agent=agent,
                         save_as_new=save_as_new)
@@ -48,12 +48,13 @@ def ConvertFile(java_parser, agent_strings, whole_path, save_as_new,
 def SetLogger(logging_level, filepath):
   log = logging.getLogger()
   filename = filepath.split('/')[-1]
-  f = logging.Formatter(filename + ':%(levelname)s: %(message)s')
+  f = logging.Formatter(filename + ':%(levelname)s:%(module)s:%(lineno)s: %(message)s')
   fh = logging.StreamHandler()
   fh.setLevel(logging_level)
   fh.setFormatter(f)
   log.propagate = False
-  log.removeHandler(log.handlers[0])
+  if len(log.handlers) > 0:
+    log.removeHandler(log.handlers[0])
   log.setLevel(logging_level)
   log.addHandler(fh)
   return log

@@ -22,7 +22,11 @@ _FLOAT_PATTERN = re.compile(r'^\d+?\.\d+f?$')
 def _ReturnReplacement(pattern_string, replacement, string, flags=0):
   pattern = re.compile(pattern_string, flags=flags)
   res = pattern.findall(string)
+  if pattern_string == r'.*':
+    res.remove('')
   if len(res) > 1:
+    import ipdb
+    ipdb.set_trace()
     logging.info('"%s" pattern is found more than once (%d) in "%s"' % (
       pattern_string, len(res), string if len(string) < 100
       else string[:100]+'...'))
@@ -87,7 +91,7 @@ def _SortListAndTable(ls, tb, pls, ptb):
 
 def _GetMainClassAndSuperClassName(element_table):
   main_class = min(element_table[model.ClassDeclaration], key=lambda x:x.lexpos)
-  super_class_name = main_class.extends if main_class.extends is not None \
+  super_class_name = main_class.extends.name.value if main_class.extends is not None \
       else 'java.lang.Object'
   return main_class, super_class_name
 
@@ -130,13 +134,13 @@ class BaseAgent(object):
     """implement this to define whether to skip this test or not"""
     raise NotImplementedError("skip not implemented")
 
-  @staticmethod
-  def ignore_files():
+  @classmethod
+  def ignore_files(cls):
     """return a list of ignored files"""
     raise NotImplementedError("ignore_files not implemented")
 
-  @staticmethod
-  def filename_match(whole_path):
+  @classmethod
+  def filename_match(cls, whole_path):
     raise NotImplementedError("file_match not implemented")
 
   @staticmethod

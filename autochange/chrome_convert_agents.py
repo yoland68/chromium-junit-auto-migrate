@@ -29,6 +29,8 @@ class ChromeActivityBaseCaseAgent(test_convert_agent.TestConvertAgent):
 
 
   def actions(self):
+    import ipdb
+    ipdb.set_trace()
     self.changeSetUp()
     self.SaveAndReload()
     self.changeAssertions()
@@ -39,7 +41,7 @@ class ChromeActivityBaseCaseAgent(test_convert_agent.TestConvertAgent):
     self.changeMinSdkAnnotation()
     self.changeRunTestOnUiThread()
     self.importTypes()
-    self.changeUiThreadTest()
+    self.warnAboutUiThreadAnnotation()
     self.removeExtends()
     self.insertActivityTestRuleTest()
     self.changeApis()
@@ -58,8 +60,8 @@ class ChromeActivityBaseCaseAgent(test_convert_agent.TestConvertAgent):
       }
   }
 
-  @staticmethod
-  def ignore_files():
+  @classmethod
+  def ignore_files(cls):
     return [
       "chrome/android/javatests/src/org/chromium/chrome/test/util/parameters/SigninParametersTest.java",
       "chrome/android/javatests/src/org/chromium/chrome/browser/webapps/WebApkIntegrationTest.java"

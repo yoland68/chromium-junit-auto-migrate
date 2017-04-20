@@ -105,10 +105,10 @@ class TestConvertAgent(base_agent.BaseAgent):
     """implement this class method to return mapping from base class to rules"""
     raise NotImplementedError("raw_api_mapping not implemented")
 
-  @staticmethod
-  def filename_match(file_whole_path):
+  @classmethod
+  def filename_match(cls, file_whole_path):
     if (file_whole_path.endswith('Test.java') and file_whole_path not in
-        TestConvertAgent.ignore_files()):
+        cls.ignore_files()):
       return True
     else:
       return False
@@ -142,17 +142,17 @@ class TestConvertAgent(base_agent.BaseAgent):
     activity_rule = self.rule_dict['var']
     for m in self.element_table.get(model.MethodInvocation, []):
       if self._isInherited(m) and m.target is None:
-        if self.mapping and self.mapping.get(self.super_class_name):
+        if self.api_mapping and self.api_mapping.get(self.super_class_name):
           if m.name in _ASSERTION_METHOD_SET or m.name in _IGNORED_APIS:
             continue
-          elif (m.name in self.mapping[self.super_class_name]['api'] or
+          elif (m.name in self.api_mapping[self.super_class_name]['api'] or
               m.name in _SPECIAL_INSTRUMENTATION_TEST_CASE_APIS):
             self._insertInfront(m, activity_rule+'.')
-          elif m.name in self.mapping[self.super_class_name].get(
+          elif m.name in self.api_mapping[self.super_class_name].get(
               'special_method_change',{}).keys():
             self._replaceString(
                 m.name,
-                activity_rule+'.'+self.mapping[self.super_class_name][
+                activity_rule+'.'+self.api_mapping[self.super_class_name][
                     'special_method_change'][m.name],
                 element=m,
                 optional=False)
