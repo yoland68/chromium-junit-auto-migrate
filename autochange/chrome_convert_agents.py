@@ -4,6 +4,8 @@ import model
 import base_agent
 import test_convert_agent
 
+import re
+
 _TOUCH_COMMON_METHOD_DICT = {
     'dragStart': True,
     'dragTo': True,
@@ -12,6 +14,65 @@ _TOUCH_COMMON_METHOD_DICT = {
 }
 
 class ChromeActivityBaseCaseAgent(test_convert_agent.TestConvertAgent):
+  def _activityLaunchReplacement(self, m):
+    if len(m.body) == 0:
+      return ''
+    start = self._lexposToLoc(m.body[0].lexpos)
+    end = self._lexposToLoc(m.body[-1].lexend)
+    content = self.content[start:end+1]
+    self._replaceString(r'.*', '', element=m, flags=re.DOTALL)
+    return content
+
+  def _startActivityEmpty(self, declaration):
+    if declaration and len(declaration.body) == 0:
+      return True
+    else:
+      return False
+
+  def _convertSetUp(self, m, replacement=''):
+    self._replaceString('protected', 'public', element=m, optional=True)
+    self._insertAbove(m, '@Before')
+    self._addImport('org.junit.Before')
+    self._replaceString(r' *@Override\n', '', element=m, optional=True)
+    self._replaceString(
+        r' *super.setUp\(.*\); *\n', replacement, element=m, optional=True)
+
+  def changeSetUpTearDown(self):
+    methods = dict(
+        (m.name, m) for m in self.element_table[model.MethodDeclaration]
+        if m.name in ['setUp', 'tearDown', 'startMainActivity'])
+
+    # If startMainActivity() declaration exists, it may be copied over to setUp
+    # or become setUp straight up depending on setUp() exists
+    start_m = methods.get('startMainActivity')
+    if self._startActivityEmpty(start_m):
+      m = methods.get('setUp')
+      if m:
+        start_main_activity_body = self._activityLaunchReplacement(start_m)
+        self._convertSetUp(m, replacement=start_main_activity_body)
+      else:
+        self._insertAbove(m, '@Before')
+        self._addImport('org.junit.Before')
+        self._replaceString(r' *@Override\n', '', element=start_m,
+                            optional=True)
+        self._replaceString('startMainActivity', 'setUp', element=start_m,
+                            optional=False)
+    else:
+      # If startMainActivity() exist but is empty, remove it
+      if start_m:
+        self._activityLaunchReplacement(start_m)
+      self._convertSetUp(m)
+
+    if methods.get('tearDown'):
+      m = methods.get('tearDown')
+      self._replaceString('protected', 'public', element=m, optional=True)
+      self._insertAbove(m, '@After')
+      self._addImport('org.junit.After')
+      self._replaceString(r' *@Override\n', '', element=m, optional=True)
+      self._replaceString(
+          r' *super.tearDown\(.*\) *;\n', '', element=m, optional=True)
+
+
   def changeTouchCommonMethods(self):
     for m in self.element_table.get(model.MethodInvocation, []):
       if m.target is None and m.name in _TOUCH_COMMON_METHOD_DICT.keys():
@@ -26,12 +87,10 @@ class ChromeActivityBaseCaseAgent(test_convert_agent.TestConvertAgent):
            if i.name.value == "UiThreadTest"):
       self.logger.warn("There is @UiThreadTestAnnotation in this one")
 
-
-
   def actions(self):
     import ipdb
     ipdb.set_trace()
-    self.changeSetUp()
+    self.changeSetUpTearDown()
     self.SaveAndReload()
     self.changeAssertions()
     self.removeConstructor()

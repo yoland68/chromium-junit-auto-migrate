@@ -161,49 +161,26 @@ class TestConvertAgent(base_agent.BaseAgent):
             self.logger.info('Can NOT handle this method call: %s' %
                           m.name)
 
-  def changeSetUp(self):
-    set_up_exist = False
-    for m in self.element_table[model.MethodDeclaration]:
-      if m.name == 'setUp':
-        set_up_exist = True
-        self._replaceString('protected', 'public', element=m, optional=True)
-        self._insertAbove(m, '@Before')
-        self._addImport('org.junit.Before')
-        self._replaceString(r' *@Override\n', '', element=m, optional=True)
-        content_replacement = self._activityLaunchReplacement()
-        self._replaceString(
-              r'super.setUp\(.*\); *\n', content_replacement+'\n',
-              element=m, optional=True)
-      if m.name == 'tearDown':
-        self._replaceString('protected', 'public', element=m, optional=True)
-        self._insertAbove(m, '@After')
-        self._addImport('org.junit.After')
-        self._replaceString(r' *@Override\n', '', element=m, optional=True)
-        self._replaceString(
-            r' *super.tearDown\(.*\) *;\n', '', element=m, optional=True)
-    if set_up_exist == False:
-      self._activityLaunchReplacement(switch_to_setUp=True)
-
-
-  def _activityLaunchReplacement(self, switch_to_setUp = False):
-    for m in self.main_element_table[model.MethodDeclaration]:
-      if m.name == 'startMainActivity':
-        if switch_to_setUp == True:
-          self._insertAbove(m, '@Before')
-          self._addImport('org.junit.Before')
-          self._replaceString(r' *@Override\n', '', element=m, optional=True)
-          self._replaceString('startMainActivity', 'setUp', element=m,
-                              optional=False)
-          return ''
-        else:
-          if len(m.body) == 0:
-            return ''
-          start = self._lexposToLoc(m.body[0].lexpos)
-          end = self._lexposToLoc(m.body[-1].lexend)
-          content = self.content[start:end+1]
-          self._replaceString(r'.*', '', element=m, flags=re.DOTALL)
-          return content
-    raise Exception('startMainActivity() is not found in %s' % self._filepath)
+  def changeSetUpTearDown(self):
+    methods = dict(
+        (m.name, m) for m in self.element_table[model.MethodDeclaration]
+        if m.name in ['setUp', 'tearDown'])
+    if methods.get('setUp'):
+      m = methods.get('setUp')
+      self._replaceString('protected', 'public', element=m, optional=True)
+      self._insertAbove(m, '@Before')
+      self._addImport('org.junit.Before')
+      self._replaceString(r' *@Override\n', '', element=m, optional=True)
+      self._replaceString(
+          r' *super.setUp\(.*\); *\n', '', element=m, optional=True)
+    if methods.get('tearDown'):
+      m = methods.get('tearDown')
+      self._replaceString('protected', 'public', element=m, optional=True)
+      self._insertAbove(m, '@After')
+      self._addImport('org.junit.After')
+      self._replaceString(r' *@Override\n', '', element=m, optional=True)
+      self._replaceString(
+          r' *super.tearDown\(.*\) *;\n', '', element=m, optional=True)
 
   def changeAssertions(self):
     for m in self.element_table[model.MethodInvocation]:
