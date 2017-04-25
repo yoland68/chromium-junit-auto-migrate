@@ -4,10 +4,23 @@ import model
 class InstrumentationTestCaseAgent(test_convert_agent.TestConvertAgent):
 
   def actions(self):
-    pass
+    self.changeSetUpTearDown()
+    self.removeExtends()
+    self.changeAssertions()
+    self.removeConstructor()
+    self.replaceInstrumentationApis()
+    self.addClassRunner()
+    self.addTestAnnotation()
+    self.changeRunTestOnUiThread()
+    self.changeUiThreadTest()
+    self.Save()
 
   @staticmethod
-  def ignore_files():
+  def class_runner():
+    return 'BaseJUnit4ClassRunner'
+
+  @classmethod
+  def ignore_files(cls):
     return []
 
   @staticmethod

@@ -38,7 +38,7 @@ def main():
   logger.setLevel(logging.ERROR)
   parser = ply.Parser(errorlog=logger)
   tree = parser.parse_file(
-      file('chrome/android/javatests/src/org/chromium/chrome/browser/toolbar/BrandColorTest.java'))
+      file('chrome/android/javatests/src/org/chromium/chrome/browser/ItemChooserDialogTest.java'))
   ls, tb = traverseTreeToTable(tree)
   import ipdb
   ipdb.set_trace()

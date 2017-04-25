@@ -5,6 +5,7 @@ import parser
 import base_agent
 import chrome_convert_agents
 import instrumentation_convert_agents
+import test_base_convert_agent
 
 import json
 import re
@@ -20,7 +21,8 @@ _AGENT_DICT = {
     "base": base_agent.BaseAgent,
     "chrome-base-test-case": chrome_convert_agents.ChromeActivityBaseCaseAgent,
     "instrumentation":
-        instrumentation_convert_agents.InstrumentationTestCaseAgent
+        instrumentation_convert_agents.InstrumentationTestCaseAgent,
+    "base-class": test_base_convert_agent.BaseCaseAgent
 }
 
 def ConvertDirectory(directory, java_parser, agent_strings,
@@ -28,7 +30,7 @@ def ConvertDirectory(directory, java_parser, agent_strings,
   agent = None
   for (dirpath, _, filenames) in os.walk(directory):
     for filename in filenames:
-      whole_path = os.join(dirpath, filename)
+      whole_path = os.path.join(dirpath, filename)
       agent = ConvertFile(
           java_parser, agent_strings, whole_path, save_as_new,
           previous_agent=agent, logging_level=logging_level)
@@ -94,6 +96,8 @@ def main():
   else:
     agents = [arguments.agent]
   java_parser = CreateJavaParser()
+  import ipdb
+  ipdb.set_trace()
   if arguments.java_file:
     ConvertFile(java_parser, agents, arguments.java_file,
                 arguments.save_as_new, logging_level=logging_level)

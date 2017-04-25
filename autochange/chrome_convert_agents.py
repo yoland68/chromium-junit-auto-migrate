@@ -24,7 +24,7 @@ class ChromeActivityBaseCaseAgent(test_convert_agent.TestConvertAgent):
     return content
 
   def _startActivityEmpty(self, declaration):
-    if declaration and len(declaration.body) == 0:
+    if (not declaration) or len(declaration.body) == 0:
       return True
     else:
       return False
@@ -45,8 +45,8 @@ class ChromeActivityBaseCaseAgent(test_convert_agent.TestConvertAgent):
     # If startMainActivity() declaration exists, it may be copied over to setUp
     # or become setUp straight up depending on setUp() exists
     start_m = methods.get('startMainActivity')
-    if self._startActivityEmpty(start_m):
-      m = methods.get('setUp')
+    m = methods.get('setUp')
+    if not self._startActivityEmpty(start_m):
       if m:
         start_main_activity_body = self._activityLaunchReplacement(start_m)
         self._convertSetUp(m, replacement=start_main_activity_body)
@@ -61,7 +61,8 @@ class ChromeActivityBaseCaseAgent(test_convert_agent.TestConvertAgent):
       # If startMainActivity() exist but is empty, remove it
       if start_m:
         self._activityLaunchReplacement(start_m)
-      self._convertSetUp(m)
+      if m:
+        self._convertSetUp(m)
 
     if methods.get('tearDown'):
       m = methods.get('tearDown')
@@ -74,22 +75,25 @@ class ChromeActivityBaseCaseAgent(test_convert_agent.TestConvertAgent):
 
 
   def changeTouchCommonMethods(self):
-    for m in self.element_table.get(model.MethodInvocation, []):
-      if m.target is None and m.name in _TOUCH_COMMON_METHOD_DICT.keys():
-          self._replaceString('('+m.name+'\()',
-              r'TouchCommon.\1mActivityTestRule.getActivity(), '
-              % self.rule_dict['var'] if _TOUCH_COMMON_METHOD_DICT[m.name]
-              else r'TouchCommon.\1', element=m, optional=False)
-          self._addImport('org.chromium.content.browser.test.util.TouchCommon')
+    def _action(m):
+      self._replaceString('('+m.name+'\()',
+          r'TouchCommon.\1mActivityTestRule.getActivity(), '
+          % self.rule_dict['var'] if _TOUCH_COMMON_METHOD_DICT[m.name]
+          else r'TouchCommon.\1', element=m, optional=False)
+      self._addImport('org.chromium.content.browser.test.util.TouchCommon')
+    self.actionOnMethodInvocation(
+        condition=lambda x:self._isInherited(x) and
+                  x.name in _TOUCH_COMMON_METHOD_DICT,
+        action=_action)
 
-  def warnAboutUiThreadAnnotation(self):
+  def warnAndChangeUiThreadAnnotation(self):
     if any(i for i in self.element_table[model.Annotation]
            if i.name.value == "UiThreadTest"):
       self.logger.warn("There is @UiThreadTestAnnotation in this one")
+      self._removeImport('android.test.UiThreadTest')
+      self._addImport('android.support.test.annotation.UiThreadTest')
 
   def actions(self):
-    import ipdb
-    ipdb.set_trace()
     self.changeSetUpTearDown()
     self.SaveAndReload()
     self.changeAssertions()
@@ -97,21 +101,25 @@ class ChromeActivityBaseCaseAgent(test_convert_agent.TestConvertAgent):
     self.replaceInstrumentationApis()
     self.addClassRunner()
     self.addTestAnnotation()
-    self.changeMinSdkAnnotation()
     self.changeRunTestOnUiThread()
     self.importTypes()
-    self.warnAboutUiThreadAnnotation()
+    self.warnAndChangeUiThreadAnnotation()
     self.removeExtends()
     self.insertActivityTestRuleTest()
     self.changeApis()
     self.Save()
 
   @staticmethod
+  def class_runner():
+    return 'ChromeJUnit4ClassRunner'
+
+  @staticmethod
   def raw_api_mapping():
     return {
       "ChromeActivityTestCaseBase": {
         "package": "org.chromium.chrome.test",
-        "location": "chrome/test/android/javatests/src/org/chromium/chrome/test/ChromeActivityTestRule.java",
+        "location": "chrome/test/android/javatests/src/org/chromium/chrome/test\
+            /ChromeActivityTestRule.java",
         "rule_var": "ChromeActivityTestRule<ChromeActivity>",
         "rule": "ChromeActivityTestRule",
         "var": "mActivityTestRule",
@@ -122,8 +130,10 @@ class ChromeActivityBaseCaseAgent(test_convert_agent.TestConvertAgent):
   @classmethod
   def ignore_files(cls):
     return [
-      "chrome/android/javatests/src/org/chromium/chrome/test/util/parameters/SigninParametersTest.java",
-      "chrome/android/javatests/src/org/chromium/chrome/browser/webapps/WebApkIntegrationTest.java"
+      "chrome/android/javatests/src/org/chromium/chrome/test/util/parameters/\
+          SigninParametersTest.java",
+      "chrome/android/javatests/src/org/chromium/chrome/browser/webapps/\
+          WebApkIntegrationTest.java"
     ]
 
   def skip(self):
@@ -134,5 +144,6 @@ class ChromeActivityBaseCaseAgent(test_convert_agent.TestConvertAgent):
       self.logger.info('Skip: %s is abstract class' % self._filepath)
       return True
     if self.api_mapping.get(self.super_class_name) is None:
-      self.logger.info('Skip: mapping does not contain files super class %s' % self.super_class_name)
+      self.logger.info('Skip: mapping does not contain files super class %s'
+                       % self.super_class_name)
       return True

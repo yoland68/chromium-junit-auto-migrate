@@ -120,11 +120,6 @@ class BaseAgent(object):
     self.parser = java_parser
     self.kwargs = kwargs
     self._added_imports = []
-    self._content_is_change = False
-
-    #table that maps lexpos to the offset amount
-    self.offset_table = collections.defaultdict(int)
-    self.offset_table[0] = -2
 
   def actions(self):
     """Implement this to define the actions needed for a Java refactoring"""
@@ -176,6 +171,38 @@ class BaseAgent(object):
   def filepath(self):
     return self._filepath
 
+  def actionOnX(self, classtype, condition=None, optional=False,
+      main_table=False, action=None):
+    if not condition:
+      condition = lambda _: True
+    element_table = (
+        self.main_element_table if main_table else self.element_table)
+    x_list = element_table.get(classtype)
+    if x_list:
+      narrow_list = [i for i in x_list if condition(i)]
+      if action:
+        for i in narrow_list:
+          action(i)
+      return narrow_list
+    else:
+      if optional:
+        return []
+      else:
+        raise Exception('Did not find any this type of element in code')
+
+
+  def actionOnMethodInvocation(self, condition=None, optional=False,
+        main_table=False, action=None):
+    return self.actionOnX(
+        model.MethodInvocation, condition=condition, optional=optional,
+        main_table=main_table, action=action)
+
+  def actionOnMethodDeclaration(self, condition=None, optional=False,
+        main_table=False, action=None):
+    return self.actionOnX(
+        model.MethodDeclaration, condition=condition, optional=optional,
+        main_table=main_table, action=action)
+
   def Load(self, java_parser, filepath):
     with open(filepath) as f:
       self._tree = java_parser.parse_file(f)
@@ -186,6 +213,12 @@ class BaseAgent(object):
     self._element_list, self._element_table, self._main_element_list, \
         self._main_element_table = _TraverseTree(self._tree)
     assert len(self._element_list) > 0
+
+    self._content_is_change = False
+
+    #table that maps lexpos to the offset amount
+    self.offset_table = collections.defaultdict(int)
+    self.offset_table[0] = -2
 
     self.main_class, self.super_class_name = _GetMainClassAndSuperClassName(
         self._element_table)
@@ -213,6 +246,9 @@ class BaseAgent(object):
       if i <= lex:
         offset += j
     return offset+lex
+
+  def _removeElement(self, e):
+    return self._replaceString(r'.*', '', element=e, flags=re.DOTALL)
 
   def _isDeclaredLocally(self, method):
     for declaration in self.main_element_table.get(model.MethodDeclaration, []):
@@ -337,6 +373,7 @@ class BaseAgent(object):
     if next_element is not None:
       self.offset_table[next_element.lexpos] = (
           len(content_replacement) - len(content_string))
+    return content_string
 
   def _findNextElementIndex(self, element):
     for i, j in enumerate(self.element_list):

@@ -44,6 +44,10 @@ _IGNORED_APIS = {
 
 _TEST_RULE_METHODS = {'run', 'apply', 'evaluate'}
 
+_INSTRUMENTATION_REGISTRY_METHODS = {
+    'getInstrumentation', 'getContext', 'getTargetContext'
+}
+
 def AnalyzeMapping(java_parser, mapping):
   stack = []
   for key, info in mapping.items():
@@ -92,6 +96,15 @@ class TestConvertAgent(base_agent.BaseAgent):
     else:
       self._api_mapping = AnalyzeMapping(self.parser, self.raw_api_mapping())
 
+  @staticmethod
+  def class_runner():
+    """return a tuple of the name of the class runner and it's package"""
+    raise NotImplementedError("class_runner() not implemented")
+
+  @property
+  def rule_var(self):
+    return self.rule_dict['var']
+
   @property
   def api_mapping(self):
     return self._api_mapping
@@ -104,6 +117,10 @@ class TestConvertAgent(base_agent.BaseAgent):
   def raw_api_mapping():
     """implement this class method to return mapping from base class to rules"""
     raise NotImplementedError("raw_api_mapping not implemented")
+
+  @staticmethod
+  def class_runner():
+    return 'BaseJUnit4ClassRunner'
 
   @classmethod
   def filename_match(cls, file_whole_path):
@@ -131,35 +148,39 @@ class TestConvertAgent(base_agent.BaseAgent):
     return self.super_class_name == 'java.lang.Object'
 
   def changeRunTestOnUiThread(self):
-    for m in self.element_table[model.MethodInvocation]:
-      if m.name == 'runTestOnUiThread' and not self._isDeclaredLocally(m):
-        self._replaceString(
-        'runTestOnUiThread',
-        'InstrumentationRegistry.getInstrumentation().runOnMainSync',
-        element=m)
+    self.actionOnMethodInvocation(
+        condition=lambda x: x.name == 'runTestOnUiThread'
+                  and self._isInherited(x),
+        action=lambda x: self._replaceString(
+            'runTestOnUiThread',
+            'InstrumentationRegistry.getInstrumentation().runOnMainSync',
+            element=x))
 
   def changeApis(self):
-    activity_rule = self.rule_dict['var']
-    for m in self.element_table.get(model.MethodInvocation, []):
-      if self._isInherited(m) and m.target is None:
-        if self.api_mapping and self.api_mapping.get(self.super_class_name):
-          if m.name in _ASSERTION_METHOD_SET or m.name in _IGNORED_APIS:
-            continue
-          elif (m.name in self.api_mapping[self.super_class_name]['api'] or
-              m.name in _SPECIAL_INSTRUMENTATION_TEST_CASE_APIS):
-            self._insertInfront(m, activity_rule+'.')
-          elif m.name in self.api_mapping[self.super_class_name].get(
-              'special_method_change',{}).keys():
-            self._replaceString(
-                m.name,
-                activity_rule+'.'+self.api_mapping[self.super_class_name][
-                    'special_method_change'][m.name],
-                element=m,
-                optional=False)
-
-          else:
-            self.logger.info('Can NOT handle this method call: %s' %
+    def _action(m):
+      if (m.name in self.api_mapping[self.super_class_name]['api'] or
+        m.name in _SPECIAL_INSTRUMENTATION_TEST_CASE_APIS):
+            self._insertInfront(m, self.activity_rule+'.')
+      elif m.name in self.api_mapping[self.super_class_name].get(
+          'special_method_change', {}).keys():
+        self._replaceString(
+            m.name,
+            self.activity_rule+'.'+self.api_mapping[self.super_class_name][
+                'special_method_change'][m.name],
+            element=m,
+            optional=False)
+      else:
+        self.logger.warn('Can NOT handle this method call: %s' %
                           m.name)
+
+    if self.api_mapping and self.api_mapping.get(self.super_class_name):
+      self.actionOnMethodInvocation(
+          condition=lambda m: self._isInherited(m)
+                    and m.name not in _ASSERTION_METHOD_SET
+                    and m.name not in _IGNORED_APIS
+                    and m.name not in _INSTRUMENTATION_REGISTRY_METHODS,
+          action=_action)
+
 
   def changeSetUpTearDown(self):
     methods = dict(
@@ -183,27 +204,32 @@ class TestConvertAgent(base_agent.BaseAgent):
           r' *super.tearDown\(.*\) *;\n', '', element=m, optional=True)
 
   def changeAssertions(self):
-    for m in self.element_table[model.MethodInvocation]:
-      if m.name in _ASSERTION_METHOD_SET and m.target is None:
-        if (m.name == 'assertEquals' and len(m.arguments) == 2 and
-            self._argumentIsFloatOrDouble(m)):
-          self._addImport('org.junit.Assert')
-          self._replaceString(
-              r'assertEquals\((.*)\)', r'Assert.assertEquals(\1, 0)', element=m,
-              optional=False, flags=re.DOTALL, verbose=True)
-        else:
-          self._addImport('org.junit.Assert')
-          self._removeImport('junit.framework.Assert')
-          self._insertInfront(m, 'Assert.')
+    def _action(m):
+      if (m.name == 'assertEquals' and len(m.arguments) == 2 and
+          self._argumentIsFloatOrDouble(m)):
+        self._addImport('org.junit.Assert')
+        self._replaceString(
+            r'assertEquals\((.*)\)', r'Assert.assertEquals(\1, 0)', element=m,
+            optional=False, flags=re.DOTALL, verbose=True)
+      else:
+        self._addImport('org.junit.Assert')
+        self._removeImport('junit.framework.Assert')
+        self._insertInfront(m, 'Assert.')
+
+    self.actionOnMethodInvocation(
+        condition=lambda x: x.name in _ASSERTION_METHOD_SET
+                  and x.target is None,
+        action=_action)
 
   def replaceInstrumentationApis(self):
-    for m in self.element_table[model.MethodInvocation]:
-      if m.name == 'getInstrumentation' and self._isInherited(m):
-        self._insertInfront(m, 'InstrumentationRegistry.')
-        self._addImport('android.support.test.InstrumentationRegistry')
-      if m.name == 'getContext' and m.target is None:
-        self._insertInfront(m, 'InstrumentationRegistry.')
-        self._addImport('android.support.test.InstrumentationRegistry')
+    def _action(m):
+      self._insertInfront(m, 'InstrumentationRegistry.')
+      self._addImport('android.support.test.InstrumentationRegistry')
+
+    self.actionOnMethodDeclaration(
+        condition=lambda x: self._isInherited(x)
+                  and x.name in _INSTRUMENTATION_REGISTRY_METHODS,
+        action=_action)
 
   def addClassRunner(
       self, runner_name='BaseJUnit4ClassRunner',
@@ -214,31 +240,37 @@ class TestConvertAgent(base_agent.BaseAgent):
 
   def removeExtends(self):
     self._removeImport(self.super_class_name)
-    if len(self.rule_dict) != 0:
-      self._addImport(self.rule_dict['package'] + '.' + self.rule_dict['rule'])
-    self._replaceString(r'extends .*? {', '{',
-                        element=self.main_class, flags=re.DOTALL)
+    end = '{'
+    if self.main_class.implements:
+      end = 'implements'
+    self._replaceString(r'extends .*? '+end, end, element=self.main_class,
+        flags=re.DOTALL)
+
+#     if len(self.rule_dict) != 0:
+      # self._addImport(self.rule_dict['package'] + '.'+self.rule_dict['rule'])
 
 
   def removeConstructor(self):
-    if len(self.main_element_table[model.ConstructorDeclaration]) != 0:
-      self._replaceString('.*', '',
-          element=self.main_element_table[model.ConstructorDeclaration][0],
-          flags=re.DOTALL)
+    self.actionOnX(model.ConstructorDeclaration,
+        action=lambda x: self._replaceString(
+            '.*', '', element=x, flags=re.DOTALL))
 
   def changeMinSdkAnnotation(self):
-    for a in self.main_element_table.get(model.Annotation):
-      if a.name == 'MinAndroidSdkLevel':
-        self._replaceString(r'@MinAndroidSdkLevel\((.*)\)', r'@SdkSuppress\1',
-            element=a)
-        self._removeImport('org.chromium.base.test.util.MinAndroidSdkLevel')
-        self._addImport('android.support.test.filters.SdkSuppress')
+    def _action(a):
+      self._replaceString(r'@MinAndroidSdkLevel\((.*)\)', r'@SdkSuppress\1',
+          element=a)
+      self._removeImport('org.chromium.base.test.util.MinAndroidSdkLevel')
+      self._addImport('android.support.test.filters.SdkSuppress')
+    self.actionOnX(model.Annotation,
+        condition=lambda x: x.name == 'MinAndroidSdkLevel',
+        action=_action)
 
   def addTestAnnotation(self):
-    for m in self.main_element_table.get(model.MethodDeclaration, []):
-      if m.name.startswith('test'):
-        self._insertAbove(m, '@Test')
-        self._addImport('org.junit.Test')
+    def _action(m):
+      self._insertAbove(m, '@Test')
+      self._addImport('org.junit.Test')
+    self.actionOnMethodDeclaration(condition=lambda x:x.name.startswith('test'),
+        action=_action)
 
   def insertActivityTestRuleTest(self):
     if self.api_mapping and len(self.rule_dict) != 0:
