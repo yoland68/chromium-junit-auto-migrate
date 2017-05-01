@@ -126,23 +126,23 @@ class ChromeActivityBaseCaseAgent(test_convert_agent.TestConvertAgent):
     self._addImport('org.chromium.chrome.browser.ChromeTabbedActivity')
 
   def actions(self):
-    self.changeSetUpTearDown()
-    self.SaveAndReload()
-    self.changeAssertions()
-    self.replaceInstrumentationApis()
-    self.addClassRunner()
-    self.addTestAnnotation()
-    self.changeRunTestOnUiThread()
-    self.importTypes()
-    self.addCommandLineFlags()
-    self.warnAndChangeUiThreadAnnotation()
-    self.changeSendKeys()
-    self.changeTouchCommonMethods()
-    self.removeExtends()
-    self.insertActivityTestRuleTest()
-    self.changeApis()
-    self.addExtraImports()
-    self.Save()
+    self.changeSetUpTearDown() #Change setup teardown to be public, remove @Override, add @Before @After
+    self.SaveAndReload() #Save the file and re-parse it
+    self.changeAssertions() #Change assertEquals, etc to Assert.assertEquals, import org.junit.Assert
+    self.replaceInstrumentationApis() #Replace inherited instrumentation APIs with InstrumentationRegistry apis
+    self.addClassRunner() #Add @RunWith(xxx.class)
+    self.addTestAnnotation() #Add @Test to each test
+    self.changeRunTestOnUiThread() #Change runTestOnUiThread() to InstrumentationRegistry.getInstrumentation().runOnMainSync
+    self.importTypes() #Import all the inherited static types from Rule class
+    self.addCommandLineFlags() #Add or modify @CommandLineFlags
+    self.warnAndChangeUiThreadAnnotation() #Warn in console about classes using @UiThreadTest
+    self.changeSendKeys() #Change sendKey() to Instrumentation#sendKeyDownUpSync
+    self.changeTouchCommonMethods() #Change singleViewClick, dragTo, etc to TouchCommon.singleViewClick
+    self.removeExtends() #Remove test class's base class
+    self.insertActivityTestRuleTest() #Insert ActivityTestRule field declaration
+    self.changeApis() #Change all the apis inherited from base class to apis from ActivityTestRule
+    self.addExtraImports() #Import any extra classes needed
+    self.Save() #Save file
 
   @staticmethod
   def class_runner():
