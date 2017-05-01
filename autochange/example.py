@@ -3,6 +3,7 @@ import model as model
 
 import collections
 import logging
+import sys
 
 def traverseTreeToTable(tree):
   source_element_table = collections.defaultdict(list)
@@ -37,8 +38,14 @@ def main():
   logger = logging.getLogger()
   logger.setLevel(logging.ERROR)
   parser = ply.Parser(errorlog=logger)
+  filename = 'chrome/android/javatests/src/org/chromium/chrome/browser/VideoFullscreenOrientationLockChromeTest.java'
+  try:
+    if sys.argv[1]:
+      filename = sys.argv[1]
+  except Exception:
+    pass
   tree = parser.parse_file(
-      file('chrome/android/javatests/src/org/chromium/chrome/browser/ItemChooserDialogTest.java'))
+      file(filename))
   ls, tb = traverseTreeToTable(tree)
   import ipdb
   ipdb.set_trace()

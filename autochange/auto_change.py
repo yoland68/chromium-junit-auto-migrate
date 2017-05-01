@@ -20,9 +20,13 @@ import codecs
 _AGENT_DICT = {
     "base": base_agent.BaseAgent,
     "chrome-base-test-case": chrome_convert_agents.ChromeActivityBaseCaseAgent,
+    "chrome-permission-test": chrome_convert_agents.PermissionTestAgent,
+    "chrome-tabbed-test": chrome_convert_agents.ChromeTabbedTestAgent,
     "instrumentation":
         instrumentation_convert_agents.InstrumentationTestCaseAgent,
-    "base-class": test_base_convert_agent.BaseCaseAgent
+    "base-class": test_base_convert_agent.BaseCaseAgent,
+    "multiactivity-test": chrome_convert_agents.MultiActivityTestAgent,
+    "temp": chrome_convert_agents.TempChromeBaseRefactorAgent,
 }
 
 def ConvertDirectory(directory, java_parser, agent_strings,
@@ -96,8 +100,6 @@ def main():
   else:
     agents = [arguments.agent]
   java_parser = CreateJavaParser()
-  import ipdb
-  ipdb.set_trace()
   if arguments.java_file:
     ConvertFile(java_parser, agents, arguments.java_file,
                 arguments.save_as_new, logging_level=logging_level)

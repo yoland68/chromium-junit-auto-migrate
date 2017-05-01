@@ -17,7 +17,8 @@ class InstrumentationTestCaseAgent(test_convert_agent.TestConvertAgent):
 
   @staticmethod
   def class_runner():
-    return 'BaseJUnit4ClassRunner'
+    return ('BaseJUnit4ClassRunner',
+            'org.chromium.base.test.BaseJUnit4ClassRunner')
 
   @classmethod
   def ignore_files(cls):

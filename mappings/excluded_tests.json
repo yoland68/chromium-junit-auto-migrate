@@ -1,9 +1,0 @@
-{
-    "tests": [
-        "content/public/android/javatests/src/org/chromium/content/browser/input/ImeTest.java",
-        "content/test/data/plugin/applet-tests/cookies/CookieTest.java",
-        "content/test/data/plugin/applet-tests/authenticator/AuthenticatorTest.java",
-        "chrome/android/javatests/src/org/chromium/chrome/test/util/parameters/SigninParametersTest.java",
-        "chrome/android/javatests/src/org/chromium/chrome/browser/webapps/WebApkIntegrationTest.java"
-    ]
-}

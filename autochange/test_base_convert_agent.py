@@ -21,6 +21,7 @@ package {{ package }};
 {{ i }}
 {% endfor %}
 
+// TODO(yolandyan): move this class to its test rule once JUnit4 migration is over
 final class {{classname}} {
     {% for f in fields %}
       {{ f }}
@@ -58,10 +59,11 @@ public class {{classname}} extends FILL_SUPER implements {{common_callback}} {
       {{ f }}
     {% endfor %}
 
-    private final mTestCommon;
+    private final {{testcommon}} mTestCommon;
 
     public {{classname}}(Class<> activityClass) {
-        mTestCommon = new {{common_callback}}(this);
+        super(activityClass);
+        mTestCommon = new {{testcommon}}(this);
     }
 
     {% for m in methods %}
@@ -156,10 +158,8 @@ class BaseCaseAgent(test_convert_agent.TestConvertAgent):
 
   def getMethods(self):
     accessible, inaccessible = [], []
-    import ipdb
-    ipdb.set_trace()
     for m in self.actionOnMethodDeclaration(
-        condition=lambda x:'\n' == self.content[self._lexposToLoc(x.pos-4)]):
+        condition=lambda x:'\n' == self.content[self._lexposToLoc(x.lexpos-5)]):
       if 'public' in m.modifiers or 'protected' in m.modifiers:
         accessible.append(m)
       else:
@@ -237,6 +237,7 @@ class BaseCaseAgent(test_convert_agent.TestConvertAgent):
         'imports': self._all_objects_to_string_list(imports),
         'fields': accessible_static_fields,
         'methods': self._all_objects_to_string_list(commonized_methods),
+        'testcommon': test_common_class_name,
         'common_callback': test_common_callback_class_name,
     }
 
@@ -244,12 +245,11 @@ class BaseCaseAgent(test_convert_agent.TestConvertAgent):
                        os.path.join(dirname, test_common_class_name+'.java'))
     self.generateClass(_TEST_RULE_JINJA_TEMPLATE, test_rule_dict,
                        os.path.join(dirname, test_rule_class_name+'.java'))
-    import ipdb
-    ipdb.set_trace()
     test_rule_agent = base_agent.BaseAgent(
         self.parser, os.path.join(dirname, test_rule_class_name+'.java'))
     test_rule_agent.actionOnMethodDeclaration(
-        action=lambda x: self._replaceString('protected', 'public', element=x))
+        action=lambda x: test_rule_agent._replaceString(
+            'protected', 'public', element=x))
     self.Save()
     test_rule_agent.Save()
 

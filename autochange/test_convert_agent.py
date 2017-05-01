@@ -118,10 +118,6 @@ class TestConvertAgent(base_agent.BaseAgent):
     """implement this class method to return mapping from base class to rules"""
     raise NotImplementedError("raw_api_mapping not implemented")
 
-  @staticmethod
-  def class_runner():
-    return 'BaseJUnit4ClassRunner'
-
   @classmethod
   def filename_match(cls, file_whole_path):
     if (file_whole_path.endswith('Test.java') and file_whole_path not in
@@ -140,7 +136,6 @@ class TestConvertAgent(base_agent.BaseAgent):
         auto_indentation=False)
     self._insertAbove(element, '\n', auto_indentation=False);
     self._addImport('org.junit.Rule')
-    self._addImport('org.chromium.chrome.browser.ChromeActivity')
 
 
   def isJUnit4(self):
@@ -160,12 +155,12 @@ class TestConvertAgent(base_agent.BaseAgent):
     def _action(m):
       if (m.name in self.api_mapping[self.super_class_name]['api'] or
         m.name in _SPECIAL_INSTRUMENTATION_TEST_CASE_APIS):
-            self._insertInfront(m, self.activity_rule+'.')
+            self._insertInfront(m, self.rule_var+'.')
       elif m.name in self.api_mapping[self.super_class_name].get(
           'special_method_change', {}).keys():
         self._replaceString(
             m.name,
-            self.activity_rule+'.'+self.api_mapping[self.super_class_name][
+            self.rule_var+'.'+self.api_mapping[self.super_class_name][
                 'special_method_change'][m.name],
             element=m,
             optional=False)
@@ -226,17 +221,27 @@ class TestConvertAgent(base_agent.BaseAgent):
       self._insertInfront(m, 'InstrumentationRegistry.')
       self._addImport('android.support.test.InstrumentationRegistry')
 
-    self.actionOnMethodDeclaration(
+    self.actionOnMethodInvocation(
         condition=lambda x: self._isInherited(x)
                   and x.name in _INSTRUMENTATION_REGISTRY_METHODS,
         action=_action)
 
-  def addClassRunner(
-      self, runner_name='BaseJUnit4ClassRunner',
-      runner_package='org.chromium.base.test.BaseJUnit4ClassRunner'):
+  def changeSendKeys(self):
+    def _action(m):
+      self._replaceString(
+          r'sendKeys',
+          'InstrumentationRegistry.getInstrumentation().sendKeyDownUpSync',
+          element=m)
+    self.actionOnMethodInvocation(
+        condition=lambda x: self._isInherited(x) and x.name == 'sendKeys',
+        action=_action)
+
+
+  def addClassRunner(self):
     self._addImport('org.junit.runner.RunWith')
-    self._addImport(runner_package)
-    self._insertAbove(self.main_class, '@RunWith(%s.class)' % runner_name)
+    self._addImport(self.class_runner()[1])
+    self._insertAbove(
+        self.main_class, '@RunWith(%s.class)' % self.class_runner()[0])
 
   def removeExtends(self):
     self._removeImport(self.super_class_name)
@@ -253,7 +258,7 @@ class TestConvertAgent(base_agent.BaseAgent):
   def removeConstructor(self):
     self.actionOnX(model.ConstructorDeclaration,
         action=lambda x: self._replaceString(
-            '.*', '', element=x, flags=re.DOTALL))
+            '.*', '', element=x, flags=re.DOTALL), optional=True)
 
   def changeMinSdkAnnotation(self):
     def _action(a):
@@ -274,6 +279,7 @@ class TestConvertAgent(base_agent.BaseAgent):
 
   def insertActivityTestRuleTest(self):
     if self.api_mapping and len(self.rule_dict) != 0:
+      self._addImport(self.rule_dict['package']+'.'+self.rule_dict['rule'])
       self._insertActivityTestRule(
           self.rule_dict['rule_var'], self.rule_dict['instan'],
           self.rule_dict['var'])

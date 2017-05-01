@@ -25,9 +25,7 @@ def _ReturnReplacement(pattern_string, replacement, string, flags=0):
   if pattern_string == r'.*':
     res.remove('')
   if len(res) > 1:
-    import ipdb
-    ipdb.set_trace()
-    logging.info('"%s" pattern is found more than once (%d) in "%s"' % (
+    logging.warn('"%s" pattern is found more than once (%d) in "%s"' % (
       pattern_string, len(res), string if len(string) < 100
       else string[:100]+'...'))
   return pattern.sub(replacement, string, count=1)
@@ -212,7 +210,7 @@ class BaseAgent(object):
     self._content_is_change = False
     self._element_list, self._element_table, self._main_element_list, \
         self._main_element_table = _TraverseTree(self._tree)
-    assert len(self._element_list) > 0
+    assert len(self._element_list) > 0, "%s file does not have content" % filepath
 
     self._content_is_change = False
 
