@@ -88,13 +88,16 @@ def AnalyzeMapping(java_parser, mapping):
 
 class TestConvertAgent(base_agent.BaseAgent):
   def __init__(self, java_parser, filepath, logger=logging.getLogger,
-               agent=None, **kwargs):
+               agent=None, use_base_class=None, **kwargs):
     super(TestConvertAgent, self).__init__(java_parser, filepath, logger, agent,
                                            **kwargs)
     if type(agent) == type(self):
       self._api_mapping = agent.api_mapping
     else:
       self._api_mapping = AnalyzeMapping(self.parser, self.raw_api_mapping())
+
+    if use_base_class:
+      self._rule_dict = self._api_mapping.get(self.raw_api_mapping().keys()[0])
 
   @staticmethod
   def class_runner():
@@ -111,6 +114,8 @@ class TestConvertAgent(base_agent.BaseAgent):
 
   @property
   def rule_dict(self):
+    if self._rule_dict:
+      return self._rule_dict
     return self.api_mapping.get(self.super_class_name, {})
 
   @staticmethod

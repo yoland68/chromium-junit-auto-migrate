@@ -74,6 +74,9 @@ public class {{classname}} extends FILL_SUPER implements {{common_callback}} {
 
 
 class BaseCaseAgent(test_convert_agent.TestConvertAgent):
+  """
+  Agent used to convert test base class, generate TestCommon and TestRule file
+  """
   @classmethod
   def ignore_files(cls):
     return ['chrome/test/android/javatests/src/org/chromium/chrome/test/\

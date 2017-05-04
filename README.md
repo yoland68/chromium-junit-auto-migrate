@@ -7,7 +7,7 @@ The script is based on [PLY](http://www.dabeaz.com/ply/) (a lex/yacc implementat
 in python) and [PLYJ](https://github.com/musiKk/plyj/) (Java 7 parser written in Python based on ply)
 
 
-## Actions
+## Actions For Test.java
 
 1. **Replace year**: replace copyright year to 2017
 2. **Remove extends**: remove inheritance in tests and imported packages
@@ -29,7 +29,26 @@ Run the following
     pip install ply
     git clone https://github.com/yoland68/chromium-junit-auto-migrate.git "$CLANKIUM_SRC"/autochange
     cd "$CLANKIUM_SRC"
-    python autochange/autochange/auto_change.py -d [Directory] -m [MAPPING_JSON]
+    python autochange/auto_change.py [option-arguments]
+
+optional arguments:
+```text
+  -h, --help            show this help message and exit
+  --use-base-class USE_BASE_CLASS
+                        Use another base class to convert
+  --no-skip             Do not skip the specified file
+  -f JAVA_FILE, --java-file JAVA_FILE
+                        Java file
+  -n, --save-as-new     Save as a new file
+  -d DIRECTORY, --directory DIRECTORY
+                        Directory where all java file lives
+  -v, --verbose         Log info
+  -s SKIP, --skip SKIP  skip files
+  -m MAPPING_FILE, --mapping-file MAPPING_FILE
+                        json file that maps all the TestBase to TestRule info
+  -a AGENT, --agent AGENT
+                        Specify the agent for the current file
+```
 
 `[Directory]` is which directory to convert, `[MAPPING_JSON]` is the path to
 a json file that maps TestBase classes to TestRules (for detail of how JUnit4 is different from JUnit3, check [TBA]())

@@ -89,12 +89,13 @@ def _SortListAndTable(ls, tb, pls, ptb):
 
 def _GetMainClassAndSuperClassName(element_table):
   main_class = min(element_table[model.ClassDeclaration], key=lambda x:x.lexpos)
-  super_class_name = main_class.extends.name.value if main_class.extends is not None \
-      else 'java.lang.Object'
+  super_class_name = main_class.extends.name.value if main_class.extends is \
+      not None else 'java.lang.Object'
   return main_class, super_class_name
 
 
 class BaseAgent(object):
+  """Basic agent for all java file, provide basic method"""
 
   def __init__(self, java_parser, filepath, logger=logging.getLogger(),
       agent=None, **kwargs):
@@ -365,8 +366,8 @@ class BaseAgent(object):
     self.content = (
         self.content[:start] + content_replacement + self.content[end+1:])
     if verbose:
-      logging.info("Before: " + content_string)
-      logging.info("After : " + content_replacement)
+      logging.debug("Before: " + content_string)
+      logging.debug("After : " + content_replacement)
 
     if next_element is not None:
       self.offset_table[next_element.lexpos] = (

@@ -5,6 +5,7 @@ import base_agent
 import test_convert_agent
 
 import re
+import collections
 
 _TOUCH_COMMON_METHOD_DICT = {
     'dragStart': True,
@@ -14,6 +15,49 @@ _TOUCH_COMMON_METHOD_DICT = {
 }
 
 class ChromeActivityBaseCaseAgent(test_convert_agent.TestConvertAgent):
+  """Agent for ChromeActivityTestCaseBase direct childrens"""
+  @staticmethod
+  def class_runner():
+    return ('ChromeJUnit4ClassRunner',
+        'org.chromium.chrome.test.ChromeJUnit4ClassRunner')
+
+  @staticmethod
+  def raw_api_mapping():
+    return {
+      "ChromeActivityTestCaseBase": {
+        "package": "org.chromium.chrome.test",
+        "location": "chrome/test/android/javatests/src/org/chromium/chrome/test"
+            +"/ChromeActivityTestRule.java",
+        "rule_var": "ChromeActivityTestRule<ChromeActivity>",
+        "rule": "ChromeActivityTestRule",
+        "var": "mActivityTestRule",
+        "instan": "ChromeActivityTestRule<>(ChromeActivity.class)",
+        "special_method_change": {}
+      },
+  }
+
+  @classmethod
+  def ignore_files(cls):
+    return [
+      "chrome/android/javatests/src/org/chromium/chrome/test/util/parameters/\
+          SigninParametersTest.java",
+      "chrome/android/javatests/src/org/chromium/chrome/browser/webapps/\
+          WebApkIntegrationTest.java"
+    ]
+
+  def skip(self):
+    if self.isJUnit4():
+      self.logger.debug('Skip: %s is already JUnit4' % self._filepath)
+      return True
+    if 'abstract' in self.main_class.modifiers:
+      self.logger.debug('Skip: %s is abstract class' % self._filepath)
+      return True
+    if self.api_mapping.get(self.super_class_name) is None:
+      self.logger.debug('Skip: mapping does not contain files super class %s'
+                       % self.super_class_name)
+      return True
+
+
   def _activityLaunchReplacement(self, m):
     if len(m.body) == 0:
       return ''
@@ -144,77 +188,38 @@ class ChromeActivityBaseCaseAgent(test_convert_agent.TestConvertAgent):
     self.addExtraImports() #Import any extra classes needed
     self.Save() #Save file
 
-  @staticmethod
-  def class_runner():
-    return ('ChromeJUnit4ClassRunner',
-        'org.chromium.chrome.test.ChromeJUnit4ClassRunner')
-
-  @staticmethod
-  def raw_api_mapping():
-    return {
-      "ChromeActivityTestCaseBase": {
-        "package": "org.chromium.chrome.test",
-        "location": "chrome/test/android/javatests/src/org/chromium/chrome/test"
-            +"/ChromeActivityTestRule.java",
-        "rule_var": "ChromeActivityTestRule<ChromeActivity>",
-        "rule": "ChromeActivityTestRule",
-        "var": "mActivityTestRule",
-        "instan": "ChromeActivityTestRule<>(ChromeActivity.class)",
-        "special_method_change": {}
-      },
-  }
-
-  @classmethod
-  def ignore_files(cls):
-    return [
-      "chrome/android/javatests/src/org/chromium/chrome/test/util/parameters/\
-          SigninParametersTest.java",
-      "chrome/android/javatests/src/org/chromium/chrome/browser/webapps/\
-          WebApkIntegrationTest.java"
-    ]
-
-  def skip(self):
-    if self.isJUnit4():
-      self.logger.info('Skip: %s is already JUnit4' % self._filepath)
-      return True
-    if 'abstract' in self.main_class.modifiers:
-      self.logger.info('Skip: %s is abstract class' % self._filepath)
-      return True
-    if self.api_mapping.get(self.super_class_name) is None:
-      self.logger.info('Skip: mapping does not contain files super class %s'
-                       % self.super_class_name)
-      return True
-
 class ChromeTabbedTestAgent(ChromeActivityBaseCaseAgent):
+  """Agent for ChromeTabbedTestCase direct childrens"""
   @staticmethod
   def raw_api_mapping():
-    raw_api = {
-      "ChromeTabbedActivityTestBase": {
-        "package": "org.chromium.chrome.test",
-        "location": "chrome/test/android/javatests/src/org/chromium/chrome/test"
-            "/ChromeTabbedActivityTestRule.java",
-        "rule_var": "ChromeTabbedActivityTestRule",
-        "rule": "ChromeTabbedActivityTestRule",
-        "var": "mActivityTestRule",
-        "instan": "ChromeTabbedActivityTestRule()",
-        "special_method_change": {}
-      }
+    result_mapping = collections.OrderedDict()
+    result_mapping["ChromeTabbedActivityTestBase"] = {
+      "package": "org.chromium.chrome.test",
+      "location": "chrome/test/android/javatests/src/org/chromium/chrome/test"
+          "/ChromeTabbedActivityTestRule.java",
+      "rule_var": "ChromeTabbedActivityTestRule",
+      "rule": "ChromeTabbedActivityTestRule",
+      "var": "mActivityTestRule",
+      "instan": "ChromeTabbedActivityTestRule()",
+      "special_method_change": {}
     }
-    raw_api.update(ChromeActivityBaseCaseAgent.raw_api_mapping())
-    return raw_api
+    result_mapping.update(ChromeActivityBaseCaseAgent.raw_api_mapping())
+    return result_mapping
 
   def skip(self):
-    if self.super_class_name != "ChromeTabbedActivityTestBase":
-      self.logger.info('Skip: %s is not ChromeTabbedActivityTestBase children'
+    if (self.super_class_name != "ChromeTabbedActivityTestBase" and
+        self.super_class_name != "VrTestBase"):
+      self.logger.debug('Skip: %s is not ChromeTabbedActivityTestBase children'
                        % self._filepath)
       return True
     return super(ChromeTabbedTestAgent, self).skip()
 
 class PermissionTestAgent(ChromeActivityBaseCaseAgent):
+  """Agent for PermissionTestBase direct childrens"""
   @staticmethod
   def raw_api_mapping():
-    raw_api = {
-			"PermissionTestCaseBase": {
+    result_mapping = collections.OrderedDict()
+    result_mapping["PermissionTestCaseBase"] = {
         "package": "org.chromium.chrome.permission",
         "location": "chrome/android/javatests/src/org/chromium/chrome/browser"
             +"/permissions/PermissionTestCaseBase.java",
@@ -223,23 +228,25 @@ class PermissionTestAgent(ChromeActivityBaseCaseAgent):
         "var": "mPermissionRule",
         "instan": "PermissionTestRule()",
         "special_method_change": {}
-      }
     }
-    raw_api.update(ChromeActivityBaseCaseAgent.raw_api_mapping())
-    return raw_api
+
+    result_mapping.update(ChromeActivityBaseCaseAgent.raw_api_mapping())
+    return result_mapping
 
   def skip(self):
     if self.super_class_name != "PermissionTestCaseBase":
-      self.logger.info('Skip: %s is not PermissionTestCaseBase children'
+      self.logger.debug('Skip: %s is not PermissionTestCaseBase children'
                        % self._filepath)
       return True
     return super(PermissionTestAgent, self).skip()
 
 class MultiActivityTestAgent(ChromeActivityBaseCaseAgent):
+  """Agent for MultiActivityTestBase direct children"""
+
   @staticmethod
   def raw_api_mapping():
-    raw_api = {
-			"MultiActivityTestBase": {
+    result_mapping = collections.OrderedDict()
+    result_mapping["MultiActivityTestBase"] = {
         "package": "org.chromium.chrome.test",
         "location": "chrome/test/android/javatests/src/org/chromium/chrome/test"
             +"/MultiActivityTestBase.java",
@@ -248,45 +255,13 @@ class MultiActivityTestAgent(ChromeActivityBaseCaseAgent):
         "var": "mTestRule",
         "instan": "MultiActivityTestRule()",
         "special_method_change": {}
-      }
     }
-    raw_api.update(ChromeActivityBaseCaseAgent.raw_api_mapping())
-    return raw_api
+    result_mapping.update(ChromeActivityBaseCaseAgent.raw_api_mapping())
+    return result_mapping
 
   def skip(self):
     if self.super_class_name != "MultiActivityTestBase":
-      self.logger.info('Skip: %s is not MultiActivityTestBase children'
+      self.logger.debug('Skip: %s is not MultiActivityTestBase children'
                        % self._filepath)
       return True
     return super(MultiActivityTestAgent, self).skip()
-
-class TempChromeBaseRefactorAgent(ChromeActivityBaseCaseAgent):
-  def skip(self):
-    if not self.isJUnit4():
-      self.logger.info('Skip: %s is not JUnit4' % self._filepath)
-      return True
-    if 'abstract' in self.main_class.modifiers:
-      self.logger.info('Skip: %s is abstract class' % self._filepath)
-      return True
-    return False
-
-  def actions(self):
-    replacement = "@CommandLineFlags(ChromeActivityTestRule.DefaultFlags)"
-    def condition(a):
-      if not isinstance(a.single_member, model.ArrayInitializer):
-        return False
-      else:
-        flags = [n.value for n in a.single_member.elements
-                 if isinstance(n, model.Name)]
-        if (len(flags) == 2 and
-            'ChromeSwitches.DISABLE_FIRST_RUN_EXPERIENCE' in flags and
-            'ChromeActivityTestRule.DISABLE_NETWORK_PREDICTION_FLAG' in flags):
-          return True
-        else:
-          return False
-
-    def _action(a):
-      self._insertAbove(a, replacement)
-      self._removeElement(a)
-    self.actionOnX(model.Annotation, condition=condition, action=_action)
-    self.Save()
