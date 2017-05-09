@@ -32,7 +32,8 @@ class ChromeActivityBaseCaseAgent(test_convert_agent.TestConvertAgent):
         "rule": "ChromeActivityTestRule",
         "var": "mActivityTestRule",
         "instan": "ChromeActivityTestRule<>(ChromeActivity.class)",
-        "special_method_change": {}
+        "special_method_change": {},
+        "parent_key": None
       },
   }
 
@@ -56,7 +57,6 @@ class ChromeActivityBaseCaseAgent(test_convert_agent.TestConvertAgent):
       self.logger.debug('Skip: mapping does not contain files super class %s'
                        % self.super_class_name)
       return True
-
 
   def _activityLaunchReplacement(self, m):
     if len(m.body) == 0:
@@ -143,7 +143,6 @@ class ChromeActivityBaseCaseAgent(test_convert_agent.TestConvertAgent):
       self._replaceString(
           r' *super.tearDown\(.*\) *;\n', '', element=m, optional=True)
 
-
   def changeTouchCommonMethods(self):
     def _action(m):
       if _TOUCH_COMMON_METHOD_DICT[m.name]:
@@ -170,29 +169,65 @@ class ChromeActivityBaseCaseAgent(test_convert_agent.TestConvertAgent):
     self._addImport('org.chromium.chrome.browser.ChromeTabbedActivity')
 
   def actions(self):
-    self.changeSetUpTearDown() #Change setup teardown to be public, remove @Override, add @Before @After
-    self.SaveAndReload() #Save the file and re-parse it
-    self.changeAssertions() #Change assertEquals, etc to Assert.assertEquals, import org.junit.Assert
-    self.replaceInstrumentationApis() #Replace inherited instrumentation APIs with InstrumentationRegistry apis
-    self.addClassRunner() #Add @RunWith(xxx.class)
-    self.addTestAnnotation() #Add @Test to each test
-    self.changeRunTestOnUiThread() #Change runTestOnUiThread() to InstrumentationRegistry.getInstrumentation().runOnMainSync
-    self.importTypes() #Import all the inherited static types from Rule class
-    self.addCommandLineFlags() #Add or modify @CommandLineFlags
-    self.warnAndChangeUiThreadAnnotation() #Warn in console about classes using @UiThreadTest
-    self.changeSendKeys() #Change sendKey() to Instrumentation#sendKeyDownUpSync
-    self.changeTouchCommonMethods() #Change singleViewClick, dragTo, etc to TouchCommon.singleViewClick
-    self.removeExtends() #Remove test class's base class
-    self.insertActivityTestRuleTest() #Insert ActivityTestRule field declaration
-    self.changeApis() #Change all the apis inherited from base class to apis from ActivityTestRule
-    self.addExtraImports() #Import any extra classes needed
-    self.Save() #Save file
+    #Change setup teardown to be public, remove @Override, add @Before @After
+    self.changeSetUpTearDown()
+
+    #Save the file and re-parse it
+    self.SaveAndReload()
+
+    #Change assertEquals, etc to Assert.assertEquals, import org.junit.Assert
+    self.changeAssertions()
+
+    #Replace inherited instrumentation APIs with InstrumentationRegistry apis
+    self.replaceInstrumentationApis()
+
+    #Add @RunWith(xxx.class)
+    self.addClassRunner()
+
+    #Add @Test to each test
+    self.addTestAnnotation()
+
+    #Change runTestOnUiThread() to InstrumentationRegistry.getInstrumentation()
+    #.runOnMainSync
+    self.changeRunTestOnUiThread()
+
+    #Import all the inherited static types from Rule class
+    self.importTypes()
+
+    #Add or modify @CommandLineFlags
+    self.addCommandLineFlags()
+
+    #Warn in console about classes using @UiThreadTest
+    self.warnAndChangeUiThreadAnnotation()
+
+    #Change sendKey() to Instrumentation#sendKeyDownUpSync
+    self.changeSendKeys()
+
+    #Change singleViewClick, dragTo, etc to TouchCommon.singleViewClick
+    self.changeTouchCommonMethods()
+
+    #Remove test class's base class
+    self.removeExtends()
+
+    #Insert ActivityTestRule field declaration
+    self.insertActivityTestRuleTest()
+
+    #Change all the apis inherited from base class to apis from ActivityTestRule
+    self.changeApis()
+
+    #Import any extra classes needed
+    self.addExtraImports()
+
+    #Save file
+    self.Save()
+
 
 class ChromeTabbedTestAgent(ChromeActivityBaseCaseAgent):
   """Agent for ChromeTabbedTestCase direct childrens"""
   @staticmethod
   def raw_api_mapping():
     result_mapping = collections.OrderedDict()
+    base_mapping = ChromeActivityBaseCaseAgent.raw_api_mapping()
     result_mapping["ChromeTabbedActivityTestBase"] = {
       "package": "org.chromium.chrome.test",
       "location": "chrome/test/android/javatests/src/org/chromium/chrome/test"
@@ -200,15 +235,15 @@ class ChromeTabbedTestAgent(ChromeActivityBaseCaseAgent):
       "rule_var": "ChromeTabbedActivityTestRule",
       "rule": "ChromeTabbedActivityTestRule",
       "var": "mActivityTestRule",
+      "parent_key": base_mapping.keys()[0],
       "instan": "ChromeTabbedActivityTestRule()",
-      "special_method_change": {}
+      "special_method_change": {},
     }
-    result_mapping.update(ChromeActivityBaseCaseAgent.raw_api_mapping())
+    result_mapping.update(base_mapping)
     return result_mapping
 
   def skip(self):
-    if (self.super_class_name != "ChromeTabbedActivityTestBase" and
-        self.super_class_name != "VrTestBase"):
+    if self.super_class_name != "ChromeTabbedActivityTestBase":
       self.logger.debug('Skip: %s is not ChromeTabbedActivityTestBase children'
                        % self._filepath)
       return True
@@ -219,6 +254,7 @@ class PermissionTestAgent(ChromeActivityBaseCaseAgent):
   @staticmethod
   def raw_api_mapping():
     result_mapping = collections.OrderedDict()
+    base_mapping = ChromeActivityBaseCaseAgent.raw_api_mapping()
     result_mapping["PermissionTestCaseBase"] = {
         "package": "org.chromium.chrome.permission",
         "location": "chrome/android/javatests/src/org/chromium/chrome/browser"
@@ -227,10 +263,10 @@ class PermissionTestAgent(ChromeActivityBaseCaseAgent):
         "rule": "PermissionTestRule",
         "var": "mPermissionRule",
         "instan": "PermissionTestRule()",
+        "parent_key": base_mapping.keys()[0],
         "special_method_change": {}
     }
-
-    result_mapping.update(ChromeActivityBaseCaseAgent.raw_api_mapping())
+    result_mapping.update(base_mapping)
     return result_mapping
 
   def skip(self):
@@ -240,12 +276,41 @@ class PermissionTestAgent(ChromeActivityBaseCaseAgent):
       return True
     return super(PermissionTestAgent, self).skip()
 
+class ChromeVrTestAgent(ChromeActivityBaseCaseAgent):
+  """Agent for VrTestBase direct childrens"""
+  @staticmethod
+  def raw_api_mapping():
+    result_mapping = collections.OrderedDict()
+    base_mapping = ChromeTabbedTestAgent.raw_api_mapping()
+    result_mapping["VrTestBase"] = {
+      "package": "org.chromium.chrome.browser.vr_shell",
+      "location": "chrome/android/javatests/src/org/chromium/chrome/browser/"
+          +"vr_shell/VrTestRule.java",
+      "rule_var": "VrTestRule",
+      "rule": "VrTestRule",
+      "var": "mVrTestRule",
+      "instan": "VrTestRule()",
+      "parent_key": base_mapping.keys()[0],
+      "special_method_change": {}
+    }
+    result_mapping.update(base_mapping)
+    return result_mapping
+
+  def skip(self):
+    if self.super_class_name != "VrTestBase":
+      self.logger.debug('Skip: %s is not ChromeTabbedActivityTestBase children'
+                       % self._filepath)
+      return True
+    return super(ChromeVrTestAgent, self).skip()
+
+
 class MultiActivityTestAgent(ChromeActivityBaseCaseAgent):
   """Agent for MultiActivityTestBase direct children"""
 
   @staticmethod
   def raw_api_mapping():
     result_mapping = collections.OrderedDict()
+    base_mapping = ChromeActivityBaseCaseAgent.raw_api_mapping()
     result_mapping["MultiActivityTestBase"] = {
         "package": "org.chromium.chrome.test",
         "location": "chrome/test/android/javatests/src/org/chromium/chrome/test"
@@ -254,9 +319,10 @@ class MultiActivityTestAgent(ChromeActivityBaseCaseAgent):
         "rule": "MultiActivityTestRule",
         "var": "mTestRule",
         "instan": "MultiActivityTestRule()",
+        "parent_key": base_mapping.keys()[0],
         "special_method_change": {}
     }
-    result_mapping.update(ChromeActivityBaseCaseAgent.raw_api_mapping())
+    result_mapping.update(base_mapping)
     return result_mapping
 
   def skip(self):

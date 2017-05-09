@@ -49,8 +49,7 @@ _INSTRUMENTATION_REGISTRY_METHODS = {
 }
 
 def AnalyzeMapping(java_parser, mapping):
-  stack = []
-  for key, info in mapping.items():
+  for _, info in mapping.items():
     f = base_agent.BaseAgent(java_parser, info['location'])
     api_list = [m.name for m in f.main_element_table[model.MethodDeclaration]
                 if f._isPublicOrProtected(m.modifiers) and
@@ -69,20 +68,7 @@ def AnalyzeMapping(java_parser, mapping):
       'api': list(set(api_list)),
       'types': local_accessible_class
           +local_accessible_interface+local_accessible_annotation})
-    if f.super_class_name not in ['java.lang.Object', 'ActivityTestRule']:
-      info.update({'parent': f.super_class_name})
-    else:
-      stack.append((key, info['rule']))
 
-  #Inheritance
-  while len(stack) != 0:
-    el = stack.pop()
-    for k, v in mapping.items():
-      if v.get('parent') == el[1]:
-        v['api'].extend(mapping[el[0]]['api'])
-        v['special_method_change'].update(
-            mapping[el[0]]['special_method_change'])
-        stack.append(k)
   return mapping
 
 
@@ -94,10 +80,14 @@ class TestConvertAgent(base_agent.BaseAgent):
     if type(agent) == type(self):
       self._api_mapping = agent.api_mapping
     else:
+      import ipdb
+      ipdb.set_trace()
       self._api_mapping = AnalyzeMapping(self.parser, self.raw_api_mapping())
 
     if use_base_class:
       self._rule_dict = self._api_mapping.get(self.raw_api_mapping().keys()[0])
+    else:
+      self._rule_dict = None
 
   @staticmethod
   def class_runner():
@@ -157,9 +147,17 @@ class TestConvertAgent(base_agent.BaseAgent):
             element=x))
 
   def changeApis(self):
+    def loopCheck(m_name):
+      current_key = self.super_class_name
+      while current_key:
+        if m_name in self.api_mapping[current_key]['api']:
+          return True
+        else:
+          current_key = self.api_mapping[current_key]['parent_key']
+      return False
     def _action(m):
-      if (m.name in self.api_mapping[self.super_class_name]['api'] or
-        m.name in _SPECIAL_INSTRUMENTATION_TEST_CASE_APIS):
+      if (loopCheck(m.name) or m.name in
+          _SPECIAL_INSTRUMENTATION_TEST_CASE_APIS):
             self._insertInfront(m, self.rule_var+'.')
       elif m.name in self.api_mapping[self.super_class_name].get(
           'special_method_change', {}).keys():

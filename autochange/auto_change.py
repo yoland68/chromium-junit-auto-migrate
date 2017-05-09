@@ -26,6 +26,7 @@ _AGENT_DICT = {
         instrumentation_convert_agents.InstrumentationTestCaseAgent,
     "base-class": test_base_convert_agent.BaseCaseAgent,
     "multiactivity-test": chrome_convert_agents.MultiActivityTestAgent,
+    "vr-test": chrome_convert_agents.ChromeVrTestAgent,
 }
 
 def ConvertDirectory(directory, java_parser, agent_strings,
@@ -56,7 +57,8 @@ def ConvertFile(java_parser, agent_strings, whole_path, save_as_new,
 def SetLogger(logging_level, filepath):
   log = logging.getLogger()
   filename = filepath.split('/')[-1]
-  f = logging.Formatter(filename + ':%(levelname)s:%(module)s:%(lineno)s: %(message)s')
+  f = logging.Formatter(
+      filename + ':%(levelname)s:%(module)s:%(lineno)s: %(message)s')
   fh = logging.StreamHandler()
   fh.setLevel(logging_level)
   fh.setFormatter(f)
