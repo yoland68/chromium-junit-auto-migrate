@@ -80,8 +80,6 @@ class TestConvertAgent(base_agent.BaseAgent):
     if type(agent) == type(self):
       self._api_mapping = agent.api_mapping
     else:
-      import ipdb
-      ipdb.set_trace()
       self._api_mapping = AnalyzeMapping(self.parser, self.raw_api_mapping())
 
     if use_base_class:
@@ -283,8 +281,10 @@ class TestConvertAgent(base_agent.BaseAgent):
   def insertActivityTestRuleTest(self):
     if self.api_mapping and len(self.rule_dict) != 0:
       self._addImport(self.rule_dict['package']+'.'+self.rule_dict['rule'])
+      instantiation = self.rule_dict['modified_instan'] \
+          if self.rule_dict['modified_instan'] else self.rule_dict['instan']
       self._insertActivityTestRule(
-          self.rule_dict['rule_var'], self.rule_dict['instan'],
+          self.rule_dict['rule_var'], instantiation,
           self.rule_dict['var'])
 
   def importTypes(self):

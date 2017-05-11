@@ -47,10 +47,10 @@ def _TraverseTree(tree):
       if getattr(current, '_fields'):
         for f in getattr(current, '_fields'):
           stack.append(getattr(current, f))
-    else:
-      logging.debug(
-          'Current element in stack is neither SourceElement or list: '
-          + str(current) + ' : ' + str(type(current)) + ', gonna ignore')
+    # else:
+#       logging.debug(
+          # 'Current element in stack is neither SourceElement or list: '
+          # + str(current) + ' : ' + str(type(current)) + ', gonna ignore')
   main_element_list, main_element_table = _GetMainListAndTable(element_list,
       element_table)
   return _SortListAndTable(

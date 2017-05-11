@@ -27,6 +27,7 @@ _AGENT_DICT = {
     "base-class": test_base_convert_agent.BaseCaseAgent,
     "multiactivity-test": chrome_convert_agents.MultiActivityTestAgent,
     "vr-test": chrome_convert_agents.ChromeVrTestAgent,
+    "payment-test": chrome_convert_agents.PaymentRequestAgent,
 }
 
 def ConvertDirectory(directory, java_parser, agent_strings,

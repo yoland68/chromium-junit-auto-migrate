@@ -249,6 +249,7 @@ class ChromeTabbedTestAgent(ChromeActivityBaseCaseAgent):
       return True
     return super(ChromeTabbedTestAgent, self).skip()
 
+
 class PermissionTestAgent(ChromeActivityBaseCaseAgent):
   """Agent for PermissionTestBase direct childrens"""
   @staticmethod
@@ -276,12 +277,13 @@ class PermissionTestAgent(ChromeActivityBaseCaseAgent):
       return True
     return super(PermissionTestAgent, self).skip()
 
+
 class ChromeVrTestAgent(ChromeActivityBaseCaseAgent):
   """Agent for VrTestBase direct childrens"""
   @staticmethod
   def raw_api_mapping():
     result_mapping = collections.OrderedDict()
-    base_mapping = ChromeTabbedTestAgent.raw_api_mapping()
+    base_mapping = ChromeActivityBaseCaseAgent.raw_api_mapping()
     result_mapping["VrTestBase"] = {
       "package": "org.chromium.chrome.browser.vr_shell",
       "location": "chrome/android/javatests/src/org/chromium/chrome/browser/"
@@ -298,7 +300,7 @@ class ChromeVrTestAgent(ChromeActivityBaseCaseAgent):
 
   def skip(self):
     if self.super_class_name != "VrTestBase":
-      self.logger.debug('Skip: %s is not ChromeTabbedActivityTestBase children'
+      self.logger.debug('Skip: %s is not VrTestBase children'
                        % self._filepath)
       return True
     return super(ChromeVrTestAgent, self).skip()
@@ -331,3 +333,53 @@ class MultiActivityTestAgent(ChromeActivityBaseCaseAgent):
                        % self._filepath)
       return True
     return super(MultiActivityTestAgent, self).skip()
+
+
+class PaymentRequestAgent(ChromeActivityBaseCaseAgent):
+  """Agent for PaymentRequestTestBase direct childrens"""
+  @staticmethod
+  def raw_api_mapping():
+    result_mapping = collections.OrderedDict()
+    base_mapping = ChromeActivityBaseCaseAgent.raw_api_mapping()
+    result_mapping["PaymentRequestTestBase"] = {
+        "package": "org.chromium.chrome.payments",
+        "location": "chrome/android/javatests/src/org/chromium/chrome/browser"
+            +"/payments/PaymentRequestTestBase.java",
+        "rule_var": "PaymentRequestTestRule",
+        "rule": "PaymentRequestTestRule",
+        "var": "mPaymentRequestTestRule",
+        "instan": "PaymentRequestTestRule(%s, this)",
+        "parent_key": base_mapping.keys()[0],
+        "special_method_change": {}
+    }
+    result_mapping.update(base_mapping)
+    return result_mapping
+
+  def skip(self):
+    if self.super_class_name != "PaymentRequestTestBase":
+      self.logger.debug('Skip: %s is not PaymentRequestTestBase children'
+                       % self._filepath)
+      return True
+    return super(PaymentRequestAgent, self).skip()
+
+  def removeConstructorParameterToRuleInsta(self):
+    def _action(constu):
+      content = self._replaceString(r'.*', '', element=constu, flags=re.DOTALL)
+      argument = re.search(r'.*super\((".*?")\);.*', content, flags=re.DOTALL).group(1)
+      self.rule_dict['modified_instan'] = self.rule_dict['instan'] % argument
+    self.actionOnX(model.ConstructorDeclaration, action=_action)
+
+  def implementMainActivityStartCallback(self):
+    self._replaceString(
+        r'^(public.*?) {',
+        r'\1 implements MainActivityStartCallback {',
+        element=self.main_class,
+        flags=re.DOTALL)
+
+  def actions(self):
+    self.removeConstructorParameterToRuleInsta()
+    self.implementMainActivityStartCallback()
+    self.SaveAndReload()
+    super(PaymentRequestAgent, self).actions()
+
+
