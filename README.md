@@ -40,12 +40,8 @@ or simply without agent specification
 python autochange/src/auto_change.py -f chrome/android/javatests/src/org/chromium/chrome/browser/payments/PaymentRequestDataUrlTest.java
 ```
 
-`[Directory]` is which directory to convert, `[MAPPING_JSON]` is the path to
-a json file that maps TestBase classes to TestRules (for detail of how JUnit4 is different from JUnit3, check [TBA]())
+`[Directory]` is which directory to convert 
 
-All the available mappings is stored in `mappings/`
-
-If `[MAPPING_JSON]` is not provided, the script would only be able to change any tests that extends from InstrumentationTestCase.
 
 ## Actions For Normal Test.java
 
@@ -61,6 +57,8 @@ Test with different parents tend to have different convertion actions, but norma
 - **Change `runTestOnUiThread(Runnable r)`** to `mActivityTestRule.runOnUiThread()`
 - **Import any inherited** classes, annotations, interfaces
 - **Change API calls** based on the parent's declared APIs (e.g. XTestBase.java is refactored to be XActivityTestRule.java, any parent method call, such as`methodX()`, in javatests that extends from XTestBase would be refactored to `mActivityTestRule.methodX()`
+
+See this [link](https://github.com/yoland68/chromium-junit-auto-migrate/blob/master/src/chrome_convert_agents.py#L171) for action definitions
 
 ## How it works
 The script would find all the java file that are named `*Test.java` in a given directory
