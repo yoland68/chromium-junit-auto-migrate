@@ -6,22 +6,6 @@ style javatests.
 The script is based on [PLY](http://www.dabeaz.com/ply/) (a lex/yacc implementation
 in python) and [PLYJ](https://github.com/musiKk/plyj/) (Java 7 parser written in Python based on ply)
 
-
-## Actions For Test.java
-
-1. **Replace year**: replace copyright year to 2017
-2. **Remove extends**: remove inheritance in tests and imported packages
-3. **Change setUp**: add @Before annotation to `setUp()`, change it to public (required by BlockJUnit4ClassRunner), remove `super.setUp()` call
-4. **Change Assertions**: find all the assertion calls and change them to use new [Assert class](http://junit.org/junit4/javadoc/latest/org/junit/Assert.html)
-5. **Replace instrumentation calls**: replace `getInstrumentation()` with `InstrumentationRegistry.getInstrumentation()`, `getContent()` with `InstrumentationRegistry.getInstrumentation()`.
-6. **Add `@RunWith(BaseJUnit4ClassRunner.class)`** and import the package
-7. **Add `@Test`** to every test method
-8. **Insert TestRule** or ActivityTestRule at the beginning of the test file (e.g. `@Rule public MyTestRule mRule = new MyTestRule();`)
-9. **Change `runTestOnUiThread(Runnable r)`** to `mActivityTestRule.runOnUiThread()`
-10. **Import any inherited** classes, annotations, interfaces
-11. **Change API calls** based on the provided JSON file (e.g. XTestBase.java is refactored to be XActivityTestRule.java, any parent method call, such as`methodX()`, in javatests that extends from XTestBase would be refactored to `mActivityTestRule.methodX()`
-
-
 ## Usage
 
 Run the following
@@ -29,25 +13,31 @@ Run the following
     pip install ply
     git clone https://github.com/yoland68/chromium-junit-auto-migrate.git "$CLANKIUM_SRC"/autochange
     cd "$CLANKIUM_SRC"
-    python autochange/auto_change.py [option-arguments]
+    python autochange/src/auto_change.py [option-arguments]
 
 optional arguments:
 ```text
   -h, --help            show this help message and exit
-  --use-base-class USE_BASE_CLASS
-                        Use another base class to convert
+  -u, --use-base-class  Use another base class to convert
   --no-skip             Do not skip the specified file
   -f JAVA_FILE, --java-file JAVA_FILE
                         Java file
-  -n, --save-as-new     Save as a new file
   -d DIRECTORY, --directory DIRECTORY
                         Directory where all java file lives
   -v, --verbose         Log info
-  -s SKIP, --skip SKIP  skip files
-  -m MAPPING_FILE, --mapping-file MAPPING_FILE
-                        json file that maps all the TestBase to TestRule info
+  -l, --list-agents     List all available agents
+  -n, --save-as-new     Save as a new file
   -a AGENT, --agent AGENT
                         Specify the agent for the current file
+```
+
+Example: converting PaymentRequestDataUrlTest.java to JUnit 4 would be
+```
+python autochange/src/auto_change.py -f chrome/android/javatests/src/org/chromium/chrome/browser/payments/PaymentRequestDataUrlTest.java -a payment-test
+```
+or simply without agent specification
+```
+python autochange/src/auto_change.py -f chrome/android/javatests/src/org/chromium/chrome/browser/payments/PaymentRequestDataUrlTest.java
 ```
 
 `[Directory]` is which directory to convert, `[MAPPING_JSON]` is the path to
@@ -56,6 +46,21 @@ a json file that maps TestBase classes to TestRules (for detail of how JUnit4 is
 All the available mappings is stored in `mappings/`
 
 If `[MAPPING_JSON]` is not provided, the script would only be able to change any tests that extends from InstrumentationTestCase.
+
+## Actions For Normal Test.java
+
+Test with different parents tend to have different convertion actions, but normally, a test convertion would include the following actions
+
+1. **Remove extends**: remove inheritance in tests and imported packages
+- **Change setUp**: add @Before annotation to `setUp()`, change it to public (required by BlockJUnit4ClassRunner), remove `super.setUp()` call
+- **Change Assertions**: find all the assertion calls and change them to use new [Assert class](http://junit.org/junit4/javadoc/latest/org/junit/Assert.html)
+- **Replace instrumentation calls**: replace `getInstrumentation()` with `InstrumentationRegistry.getInstrumentation()`, `getContent()` with `InstrumentationRegistry.getInstrumentation()`.
+- **Add `@RunWith(CustomClassRunner.class)`** and import the package
+- **Add `@Test`** to every test method
+- **Insert TestRule** or ActivityTestRule at the beginning of the test file (e.g. `@Rule public MyTestRule mRule = new MyTestRule();`)
+- **Change `runTestOnUiThread(Runnable r)`** to `mActivityTestRule.runOnUiThread()`
+- **Import any inherited** classes, annotations, interfaces
+- **Change API calls** based on the parent's declared APIs (e.g. XTestBase.java is refactored to be XActivityTestRule.java, any parent method call, such as`methodX()`, in javatests that extends from XTestBase would be refactored to `mActivityTestRule.methodX()`
 
 ## How it works
 The script would find all the java file that are named `*Test.java` in a given directory
@@ -84,11 +89,9 @@ There are a couple of things this script **can not** do for you
 
 4. Import order and file format. There are various file formating problem and package import order problems when using the auto change script. The best thing to do is to use Eclipse to format the code and organize import for you.
 
-5. These methods that doesn't get automatically convert: [`sentKeys(String s)`](https://developer.android.com/reference/android/test/InstrumentationTestCase.html), [`sendKeys(int... keys)`](https://developer.android.com/reference/android/test/InstrumentationTestCase.html), [`sendRepeatedKeys(int...keys)`](https://developer.android.com/reference/android/test/InstrumentationTestCase.html). Use [`sendKeyDownUpSync(int key)`](https://developer.android.com/reference/android/app/Instrumentation.html#sendKeyDownUpSync(int\)) or [`sendKeySync(KeyEvent event)`](https://developer.android.com/reference/android/app/Instrumentation.html#sendKeySync(android.view.KeyEvent\))
+5. Inherited public variables. Issue: TestBase class has a public variable, and child tests access that variable. Now that TestBases are gone. Solution: Because the TestBase's APIs are mostly 1 to 1 mapped to TestRule class, one should create a getter for these public variable in TestRule.
 
-6. Inherited public variables. Issue: TestBase class has a public variable, and child tests access that variable. Now that TestBases are gone. Solution: Because the TestBase's APIs are mostly 1 to 1 mapped to TestRule class, one should create a getter for these public variable in TestRule.
-
-7. Java 7 only
+6. Java 7 only
 
 
 ## Bug
