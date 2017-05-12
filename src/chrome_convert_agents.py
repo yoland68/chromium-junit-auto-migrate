@@ -382,4 +382,31 @@ class PaymentRequestAgent(ChromeActivityBaseCaseAgent):
     self.SaveAndReload()
     super(PaymentRequestAgent, self).actions()
 
+class CastTestAgent(ChromeActivityBaseCaseAgent):
+  """Agent for PaymentRequestTestBase direct childrens"""
+  @staticmethod
+  def raw_api_mapping():
+    result_mapping = collections.OrderedDict()
+    base_mapping = ChromeActivityBaseCaseAgent.raw_api_mapping()
+    result_mapping["CastTestBase"] = {
+        "package": "org.chromium.chrome.browser.media.remote",
+        "location": "chrome/android/javatests/src/org/chromium/chrome/browser"
+            +"/media/remote/CastTestRule.java",
+        "rule_var": "CastTestRule",
+        "rule": "CastTestRule",
+        "var": "mCastTestRule",
+        "instan": "CastTestRule()",
+        "parent_key": base_mapping.keys()[0],
+        "special_method_change": {}
+    }
+    result_mapping.update(base_mapping)
+    return result_mapping
+
+  def skip(self):
+    if self.super_class_name != "CastTestBase":
+      self.logger.debug('Skip: %s is not CastTestBase children'
+                       % self._filepath)
+      return True
+    return super(CastTestAgent, self).skip()
+
 

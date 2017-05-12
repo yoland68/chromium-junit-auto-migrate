@@ -281,8 +281,8 @@ class TestConvertAgent(base_agent.BaseAgent):
   def insertActivityTestRuleTest(self):
     if self.api_mapping and len(self.rule_dict) != 0:
       self._addImport(self.rule_dict['package']+'.'+self.rule_dict['rule'])
-      instantiation = self.rule_dict['modified_instan'] \
-          if self.rule_dict['modified_instan'] else self.rule_dict['instan']
+      instantiation = self.rule_dict.get('modified_instan') \
+          if self.rule_dict.get('modified_instan') else self.rule_dict['instan']
       self._insertActivityTestRule(
           self.rule_dict['rule_var'], instantiation,
           self.rule_dict['var'])

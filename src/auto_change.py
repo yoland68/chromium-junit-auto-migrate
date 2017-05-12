@@ -18,7 +18,6 @@ import sys
 import codecs
 
 _AGENT_DICT = {
-    "base": base_agent.BaseAgent,
     "chrome-base-test-case": chrome_convert_agents.ChromeActivityBaseCaseAgent,
     "chrome-permission-test": chrome_convert_agents.PermissionTestAgent,
     "chrome-tabbed-test": chrome_convert_agents.ChromeTabbedTestAgent,
@@ -28,6 +27,7 @@ _AGENT_DICT = {
     "multiactivity-test": chrome_convert_agents.MultiActivityTestAgent,
     "vr-test": chrome_convert_agents.ChromeVrTestAgent,
     "payment-test": chrome_convert_agents.PaymentRequestAgent,
+    "cast-test": chrome_convert_agents.CastTestAgent,
 }
 
 def ConvertDirectory(directory, java_parser, agent_strings,
