@@ -215,6 +215,9 @@ class ChromeActivityBaseCaseAgent(test_convert_agent.TestConvertAgent):
     #Change all the apis inherited from base class to apis from ActivityTestRule
     self.changeApis()
 
+    #Import static variables
+    #self.importStaticVariables()
+
     #Import any extra classes needed
     self.addExtraImports()
 
@@ -383,7 +386,7 @@ class PaymentRequestAgent(ChromeActivityBaseCaseAgent):
     super(PaymentRequestAgent, self).actions()
 
 class CastTestAgent(ChromeActivityBaseCaseAgent):
-  """Agent for PaymentRequestTestBase direct childrens"""
+  """Agent for CastTestAgent direct childrens"""
   @staticmethod
   def raw_api_mapping():
     result_mapping = collections.OrderedDict()
@@ -409,4 +412,110 @@ class CastTestAgent(ChromeActivityBaseCaseAgent):
       return True
     return super(CastTestAgent, self).skip()
 
+class ProviderTestAgent(ChromeActivityBaseCaseAgent):
+  """Agent for ProviderTestAgent direct childrens"""
+  @staticmethod
+  def raw_api_mapping():
+    result_mapping = collections.OrderedDict()
+    base_mapping = ChromeActivityBaseCaseAgent.raw_api_mapping()
+    result_mapping["ProviderTestBase"] = {
+        "package": "org.chromium.chrome.browser.provider",
+        "location": "chrome/android/javatests/src/org/chromium/chrome/browser"
+            +"/provider/ProviderTestRule.java",
+        "rule_var": "ProviderTestRule",
+        "rule": "ProviderTestRule",
+        "var": "mProviderTestRule",
+        "instan": "ProviderTestRule()",
+        "parent_key": base_mapping.keys()[0],
+        "special_method_change": {}
+    }
+    result_mapping.update(base_mapping)
+    return result_mapping
 
+  def skip(self):
+    if self.super_class_name != "ProviderTestBase":
+      self.logger.debug('Skip: %s is not ProviderTestBase children'
+                       % self._filepath)
+      return True
+    return super(ProviderTestAgent, self).skip()
+
+class CustomTabActivityTestAgent(ChromeActivityBaseCaseAgent):
+  """Agent for CustomTabActivityTestAgent direct childrens"""
+  @staticmethod
+  def raw_api_mapping():
+    result_mapping = collections.OrderedDict()
+    base_mapping = ChromeActivityBaseCaseAgent.raw_api_mapping()
+    result_mapping["CustomTabActivityTestBase"] = {
+        "package": "org.chromium.chrome.browser.customtabs",
+        "location": "chrome/android/javatests/src/org/chromium/chrome/browser"
+            +"/customtabs/CustomTabActivityTestRule.java",
+        "rule_var": "CustomTabActivityTestRule",
+        "rule": "CustomTabActivityTestRule",
+        "var": "mCustomTabActivityTestRule",
+        "instan": "CustomTabActivityTestRule()",
+        "parent_key": base_mapping.keys()[0],
+        "special_method_change": {}
+    }
+    result_mapping.update(base_mapping)
+    return result_mapping
+
+  def skip(self):
+    if self.super_class_name != "CustomTabActivityTestBase":
+      self.logger.debug('Skip: %s is not CustomTabActivityTestBase children'
+                       % self._filepath)
+      return True
+    return super(CustomTabActivityTestAgent, self).skip()
+
+class NotificationTestAgent(ChromeActivityBaseCaseAgent):
+  """Agent for NotificationTestAgent direct childrens"""
+  @staticmethod
+  def raw_api_mapping():
+    result_mapping = collections.OrderedDict()
+    base_mapping = ChromeActivityBaseCaseAgent.raw_api_mapping()
+    result_mapping["NotificationTestBase"] = {
+        "package": "org.chromium.chrome.browser.notifications",
+        "location": "chrome/android/javatests/src/org/chromium/chrome/browser"
+            +"/notifications/NotificationTestRule.java",
+        "rule_var": "NotificationTestRule",
+        "rule": "NotificationTestRule",
+        "var": "mNotificationTestRule",
+        "instan": "NotificationTestRule()",
+        "parent_key": base_mapping.keys()[0],
+        "special_method_change": {}
+    }
+    result_mapping.update(base_mapping)
+    return result_mapping
+
+  def skip(self):
+    if self.super_class_name != "NotificationTestBase":
+      self.logger.debug('Skip: %s is not NotificationTestBase children'
+                       % self._filepath)
+      return True
+    return super(NotificationTestAgent, self).skip()
+
+class DownloadTestAgent(ChromeActivityBaseCaseAgent):
+  """Agent for DownloadTestAgent direct childrens"""
+  @staticmethod
+  def raw_api_mapping():
+    result_mapping = collections.OrderedDict()
+    base_mapping = ChromeActivityBaseCaseAgent.raw_api_mapping()
+    result_mapping["DownloadTestBase"] = {
+        "package": "org.chromium.chrome.browser.download",
+        "location": "chrome/android/javatests/src/org/chromium/chrome/browser"
+            +"/download/DownloadTestRule.java",
+        "rule_var": "DownloadTestRule",
+        "rule": "DownloadTestRule",
+        "var": "mDownloadTestRule",
+        "instan": "DownloadTestRule()",
+        "parent_key": base_mapping.keys()[0],
+        "special_method_change": {}
+    }
+    result_mapping.update(base_mapping)
+    return result_mapping
+
+  def skip(self):
+    if self.super_class_name != "DownloadTestBase":
+      self.logger.debug('Skip: %s is not DownloadTestBase children'
+                       % self._filepath)
+      return True
+    return super(DownloadTestAgent, self).skip()

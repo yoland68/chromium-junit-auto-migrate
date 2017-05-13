@@ -35,7 +35,7 @@ class InstrumentationTestCaseAgent(test_convert_agent.TestConvertAgent):
     if 'abstract' in self.main_class.modifiers:
       self.logger.debug('Skip: %s is abstract class' % self._filepath)
       return True
-    if self.super_class_name != 'InstrumentationTestCase':
+    if self.super_class_name not in ['InstrumentationTestCase', 'AndroidTestCase']:
       self.logger.debug('Skip: %s is not InstrumentationTestCase direct children'
           % self._filepath)
       return True

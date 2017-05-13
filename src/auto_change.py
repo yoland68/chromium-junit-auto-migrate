@@ -6,6 +6,7 @@ import base_agent
 import chrome_convert_agents
 import instrumentation_convert_agents
 import test_base_convert_agent
+import content_convert_agents
 
 import json
 import re
@@ -28,6 +29,12 @@ _AGENT_DICT = {
     "vr-test": chrome_convert_agents.ChromeVrTestAgent,
     "payment-test": chrome_convert_agents.PaymentRequestAgent,
     "cast-test": chrome_convert_agents.CastTestAgent,
+    "provider-test": chrome_convert_agents.ProviderTestAgent,
+    "customtabs-test": chrome_convert_agents.CustomTabActivityTestAgent,
+    "notification-test": chrome_convert_agents.NotificationTestAgent,
+    "download-test": chrome_convert_agents.DownloadTestAgent,
+    "connectivity-checker-test": content_convert_agents.ConnectivityCheckerTestAgent,
+    "tab-model-selector-observer-test": content_convert_agents.SelectorObserverTest,
 }
 
 def ConvertDirectory(directory, java_parser, agent_strings,

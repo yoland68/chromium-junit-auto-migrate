@@ -50,25 +50,29 @@ _INSTRUMENTATION_REGISTRY_METHODS = {
 
 def AnalyzeMapping(java_parser, mapping):
   for _, info in mapping.items():
-    f = base_agent.BaseAgent(java_parser, info['location'])
-    api_list = [m.name for m in f.main_element_table[model.MethodDeclaration]
-                if f._isPublicOrProtected(m.modifiers) and
-                m.name not in _TEST_RULE_METHODS]
-    local_accessible_interface = [
-        m.name for m in f.main_element_table.get(model.InterfaceDeclaration, [])
-        if f._isPublicOrProtected(m.modifiers)]
-    local_accessible_annotation = [
-        m.name for m in f.main_element_table.get(
-            model.AnnotationDeclaration, [])
-        if f._isPublicOrProtected(m.modifiers)]
-    local_accessible_class = [
-        m.name for m in f.element_table.get(model.ClassDeclaration, [])
-        if f._isPublicOrProtected(m.modifiers) and m.name != f.main_class.name]
-    info.update({
-      'api': list(set(api_list)),
-      'types': local_accessible_class
-          +local_accessible_interface+local_accessible_annotation})
-
+    try:
+      f = base_agent.BaseAgent(java_parser, info['location'])
+      api_list = [m.name for m in f.main_element_table[model.MethodDeclaration]
+                  if f._isPublicOrProtected(m.modifiers) and
+                  m.name not in _TEST_RULE_METHODS]
+      local_accessible_interface = [
+          m.name for m in f.main_element_table.get(
+              model.InterfaceDeclaration, [])
+          if f._isPublicOrProtected(m.modifiers)]
+      local_accessible_annotation = [
+          m.name for m in f.main_element_table.get(
+              model.AnnotationDeclaration, [])
+          if f._isPublicOrProtected(m.modifiers)]
+      local_accessible_class = [
+          m.name for m in f.element_table.get(model.ClassDeclaration, [])
+          if f._isPublicOrProtected(
+              m.modifiers) and m.name != f.main_class.name]
+      info.update({
+        'api': list(set(api_list)),
+        'types': local_accessible_class
+            +local_accessible_interface+local_accessible_annotation})
+    except IOError:
+      logging.warning("%s doesn't exist" % info['location'])
   return mapping
 
 
@@ -130,6 +134,22 @@ class TestConvertAgent(base_agent.BaseAgent):
     self._insertAbove(element, '\n', auto_indentation=False);
     self._addImport('org.junit.Rule')
 
+#     self._replaceString(r'^(public class.*?{)',
+        # r'\1\n    @Rule\n    public %s %s = new %s;\n' % (
+            # var_type, var, instantiation), element=self.main_class)
+    # self._addImport('org.junit.Rule')
+
+  def importStaticVariables(self):
+    static_fields = self.actionOnX(
+        model.FieldDeclaration, condition=lambda x: 'static' in x.modifiers)
+    static_fields_names = [
+        x.variable_declarators[0].variable.name for x in static_fields]
+    self.actionOnX(
+        model.Name,
+        condition=lambda x: getattr(x, "value", None)
+            and x.value not in static_fields_names,
+        action=lambda x: self._addImport(
+            'static %s.%s' % (self.rule_dict['package'], x.value)))
 
   def isJUnit4(self):
     """Check if the test class is already JUnit4 by checking its super class"""
@@ -254,7 +274,6 @@ class TestConvertAgent(base_agent.BaseAgent):
 
 #     if len(self.rule_dict) != 0:
       # self._addImport(self.rule_dict['package'] + '.'+self.rule_dict['rule'])
-
 
   def removeConstructor(self):
     self.actionOnX(model.ConstructorDeclaration,
