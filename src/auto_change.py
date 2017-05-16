@@ -33,8 +33,12 @@ _AGENT_DICT = {
     "customtabs-test": chrome_convert_agents.CustomTabActivityTestAgent,
     "notification-test": chrome_convert_agents.NotificationTestAgent,
     "download-test": chrome_convert_agents.DownloadTestAgent,
-    "connectivity-checker-test": content_convert_agents.ConnectivityCheckerTestAgent,
-    "tab-model-selector-observer-test": content_convert_agents.SelectorObserverTest,
+    "bottom-sheet-test": chrome_convert_agents.BottomSheetTestAgent,
+    "connectivity-checker-test":
+        content_convert_agents.ConnectivityCheckerTestAgent,
+    "tab-model-selector-observer-test":
+        content_convert_agents.SelectorObserverTest,
+    "native-library-test": content_convert_agents.NativeLibraryTestAgent,
 }
 
 def ConvertDirectory(directory, java_parser, agent_strings,

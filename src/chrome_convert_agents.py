@@ -81,11 +81,14 @@ class ChromeActivityBaseCaseAgent(test_convert_agent.TestConvertAgent):
     self._replaceString(
         r' *super.setUp\(.*\); *\n', replacement, element=m, optional=True)
 
-  def addCommandLineFlags(self):
-    commandline_template = \
-        """@CommandLineFlags.Add({ChromeSwitches.DISABLE_FIRST_RUN_EXPERIENCE,
-        ChromeActivityTestRule.DISABLE_NETWORK_PREDICTION_FLAG,
-        %s})"""
+  def addCommandLineFlags(self, template=None):
+    if template is None:
+      commandline_template = \
+          """@CommandLineFlags.Add({ChromeSwitches.DISABLE_FIRST_RUN_EXPERIENCE,
+          ChromeActivityTestRule.DISABLE_NETWORK_PREDICTION_FLAG,
+          %s})"""
+    else:
+      commandline_template = template
     values = []
     flags = self.actionOnX(
         model.Annotation,
@@ -386,7 +389,7 @@ class PaymentRequestAgent(ChromeActivityBaseCaseAgent):
     super(PaymentRequestAgent, self).actions()
 
 class CastTestAgent(ChromeActivityBaseCaseAgent):
-  """Agent for CastTestAgent direct childrens"""
+  """Agent for CastTestBase direct childrens"""
   @staticmethod
   def raw_api_mapping():
     result_mapping = collections.OrderedDict()
@@ -413,7 +416,7 @@ class CastTestAgent(ChromeActivityBaseCaseAgent):
     return super(CastTestAgent, self).skip()
 
 class ProviderTestAgent(ChromeActivityBaseCaseAgent):
-  """Agent for ProviderTestAgent direct childrens"""
+  """Agent for ProviderTestBase direct childrens"""
   @staticmethod
   def raw_api_mapping():
     result_mapping = collections.OrderedDict()
@@ -440,7 +443,7 @@ class ProviderTestAgent(ChromeActivityBaseCaseAgent):
     return super(ProviderTestAgent, self).skip()
 
 class CustomTabActivityTestAgent(ChromeActivityBaseCaseAgent):
-  """Agent for CustomTabActivityTestAgent direct childrens"""
+  """Agent for CustomTabActivityTestBase direct childrens"""
   @staticmethod
   def raw_api_mapping():
     result_mapping = collections.OrderedDict()
@@ -463,11 +466,10 @@ class CustomTabActivityTestAgent(ChromeActivityBaseCaseAgent):
     if self.super_class_name != "CustomTabActivityTestBase":
       self.logger.debug('Skip: %s is not CustomTabActivityTestBase children'
                        % self._filepath)
-      return True
     return super(CustomTabActivityTestAgent, self).skip()
 
 class NotificationTestAgent(ChromeActivityBaseCaseAgent):
-  """Agent for NotificationTestAgent direct childrens"""
+  """Agent for NotificationTestBase direct childrens"""
   @staticmethod
   def raw_api_mapping():
     result_mapping = collections.OrderedDict()
@@ -494,7 +496,7 @@ class NotificationTestAgent(ChromeActivityBaseCaseAgent):
     return super(NotificationTestAgent, self).skip()
 
 class DownloadTestAgent(ChromeActivityBaseCaseAgent):
-  """Agent for DownloadTestAgent direct childrens"""
+  """Agent for DownloadTestBase direct childrens"""
   @staticmethod
   def raw_api_mapping():
     result_mapping = collections.OrderedDict()
@@ -519,3 +521,52 @@ class DownloadTestAgent(ChromeActivityBaseCaseAgent):
                        % self._filepath)
       return True
     return super(DownloadTestAgent, self).skip()
+
+class BottomSheetTestAgent(ChromeActivityBaseCaseAgent):
+  """Agent for BottomSheetTestCaseBase direct childrens"""
+  @staticmethod
+  def raw_api_mapping():
+    result_mapping = collections.OrderedDict()
+    base_mapping = ChromeActivityBaseCaseAgent.raw_api_mapping()
+    result_mapping["BottomSheetTestCaseBase"] = {
+        "package": "org.chromium.chrome.browser.provider",
+        "location": "chrome/test/android/javatests/src/org/chromium/chrome/"
+            +"test/BottomSheetTestRule.java",
+        "rule_var": "BottomSheetTestRule",
+        "rule": "BottomSheetTestRule",
+        "var": "mBottomSheetTestRule",
+        "instan": "BottomSheetTestRule()",
+        "parent_key": base_mapping.keys()[0],
+        "special_method_change": {}
+    }
+    result_mapping.update(base_mapping)
+    return result_mapping
+
+  def skip(self):
+    if self.super_class_name != "BottomSheetTestCaseBase":
+      self.logger.debug('Skip: %s is not BottomSheetTestCaseBase children'
+                       % self._filepath)
+      return True
+    return super(BottomSheetTestAgent, self).skip()
+
+  def addCommandLineFlags(self, template=None):
+    template = \
+          """@CommandLineFlags.Add({ChromeSwitches.DISABLE_FIRST_RUN_EXPERIENCE,
+          ChromeActivityTestRule.DISABLE_NETWORK_PREDICTION_FLAG,
+          enable-features=ChromeHome,
+          %s})"""
+
+    super(BottomSheetTestAgent, self).addCommandLineFlags(template)
+
+  def addRestrictionAnnotation(self):
+    self._insertAbove(
+        self.main_class,
+        "@Restriction(RESTRICTION_TYPE_PHONE) // ChromeHome is only enabled \
+              on phones")
+
+  def actions(self):
+    self.addRestrictionAnnotation()
+    super(BottomSheetTestAgent, self).actions()
+
+
+

@@ -10,13 +10,58 @@ import collections
 import codecs
 import logging
 
-class ConnectivityCheckerTestAgent(test_convert_agent.TestConvertAgent):
-  """Agent for ConnectivityCheckerTestAgent direct childrens"""
+class NativeLibraryTestAgent(test_convert_agent.TestConvertAgent):
+  """Agent for NativeLibraryTestAgent direct childrens"""
   @staticmethod
   def class_runner():
     return ('BaseJUnit4ClassRunner',
             'org.chromium.base.test.BaseJUnit4ClassRunner')
 
+  @classmethod
+  def ignore_files(cls):
+    return []
+
+  @staticmethod
+  def raw_api_mapping():
+    result_mapping = collections.OrderedDict()
+    result_mapping["NativeLibraryTestBase"] = {
+        "package": "org.chromium.chrome.browser.feedback",
+        "location": "content/public/test/android/javatests/src/org/chromium/"
+            +"content/browser/test/NativeLibraryTestRule.java",
+        "rule_var": "NativeLibraryTestRule",
+        "rule": "NativeLibraryTestRule",
+        "var": "mNativeLibraryTestRule",
+        "instan": "NativeLibraryTestRule()",
+        "parent_key": None,
+        "special_method_change": {}
+    }
+    return result_mapping
+
+  def skip(self):
+    if self.super_class_name != "NativeLibraryTestBase":
+      self.logger.debug('Skip: %s is not NativeLibraryTestBase children'
+                       % self._filepath)
+      return True
+    return False
+
+  def actions(self):
+    self.changeSetUpTearDown()
+    self.changeAssertions()
+    self.replaceInstrumentationApis()
+    self.addClassRunner()
+    self.addTestAnnotation()
+    self.changeRunTestOnUiThread()
+    self.importTypes()
+    self.changeSendKeys()
+    self.removeExtends()
+    self.insertActivityTestRuleTest()
+    self.changeApis()
+    #Save file
+    self.Save()
+
+
+class ConnectivityCheckerTestAgent(NativeLibraryTestAgent):
+  """Agent for ConnectivityCheckerTestAgent direct childrens"""
   @classmethod
   def ignore_files(cls):
     return []
@@ -43,21 +88,6 @@ class ConnectivityCheckerTestAgent(test_convert_agent.TestConvertAgent):
                        % self._filepath)
       return True
     return False
-
-  def actions(self):
-    self.changeSetUpTearDown()
-    self.changeAssertions()
-    self.replaceInstrumentationApis()
-    self.addClassRunner()
-    self.addTestAnnotation()
-    self.changeRunTestOnUiThread()
-    self.importTypes()
-    self.changeSendKeys()
-    self.removeExtends()
-    self.insertActivityTestRuleTest()
-    self.changeApis()
-    #Save file
-    self.Save()
 
 class SelectorObserverTest(test_convert_agent.TestConvertAgent):
   """Agent for SelectorObserverTestAgent direct childrens"""
@@ -92,20 +122,3 @@ class SelectorObserverTest(test_convert_agent.TestConvertAgent):
                        % self._filepath)
       return True
     return False
-
-  def actions(self):
-    self.changeSetUpTearDown()
-    self.changeAssertions()
-    self.replaceInstrumentationApis()
-    self.addClassRunner()
-    self.addTestAnnotation()
-    self.changeRunTestOnUiThread()
-    self.importTypes()
-    self.changeSendKeys()
-    self.removeExtends()
-    self.insertActivityTestRuleTest()
-    self.changeApis()
-    #Save file
-    self.Save()
-
-

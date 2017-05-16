@@ -294,7 +294,9 @@ class TestConvertAgent(base_agent.BaseAgent):
     def _action(m):
       self._insertAbove(m, '@Test')
       self._addImport('org.junit.Test')
-    self.actionOnMethodDeclaration(condition=lambda x:x.name.startswith('test'),
+    self.actionOnMethodDeclaration(
+        condition=lambda x:x.name.startswith('test') and \
+            'public' in x.modifiers,
         action=_action)
 
   def insertActivityTestRuleTest(self):
