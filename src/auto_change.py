@@ -1,22 +1,15 @@
 #!/usr/bin/env python
 
-import model
 import parser
-import base_agent
 import chrome_convert_agents
 import instrumentation_convert_agents
 import test_base_convert_agent
 import content_convert_agents
 
-import json
-import re
 import logging
 import argparse
 import os
-import collections
 import sys
-
-import codecs
 
 _AGENT_DICT = {
     "chrome-base-test-case": chrome_convert_agents.ChromeActivityBaseCaseAgent,
@@ -40,6 +33,7 @@ _AGENT_DICT = {
         content_convert_agents.SelectorObserverTest,
     "native-library-test": content_convert_agents.NativeLibraryTestAgent,
 }
+
 
 def ConvertDirectory(directory, java_parser, agent_strings,
                      save_as_new=False, logging_level=logging.WARNING,
