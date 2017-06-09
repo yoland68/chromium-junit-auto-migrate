@@ -2,6 +2,7 @@
 
 import parser
 import chrome_convert_agents
+import webview_convert_agents
 import instrumentation_convert_agents
 import test_base_convert_agent
 import content_convert_agents
@@ -32,6 +33,7 @@ _AGENT_DICT = {
     "tab-model-selector-observer-test":
         content_convert_agents.SelectorObserverTest,
     "native-library-test": content_convert_agents.NativeLibraryTestAgent,
+    "webview-test": webview_convert_agents.WebViewTestAgent,
 }
 
 
