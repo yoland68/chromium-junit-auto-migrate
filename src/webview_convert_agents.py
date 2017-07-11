@@ -32,7 +32,7 @@ class WebViewTestAgent(test_convert_agent.TestConvertAgent):
 
   @classmethod
   def ignore_files(cls):
-    return []
+    return ['android_webview/javatests/src/org/chromium/android_webview/test/DisableHardwareAccelerationForTest.java']
 
   def warnAndChangeUiThreadAnnotation(self):
     if any(i for i in self.element_table[model.Annotation]
