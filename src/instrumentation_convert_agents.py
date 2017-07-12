@@ -23,7 +23,7 @@ class InstrumentationTestCaseAgent(test_convert_agent.TestConvertAgent):
 
   @classmethod
   def ignore_files(cls):
-    return []
+    return ['android_webview/javatests/src/org/chromium/android_webview/test/DisableHardwareAccelerationForTest.java']
 
   @staticmethod
   def raw_api_mapping():
@@ -53,3 +53,10 @@ class InstrumentationTestCaseAgent(test_convert_agent.TestConvertAgent):
         self._insertActivityTestRule(
             'UiThreadTestRule', 'UiThreadTestRule()',
             'mUiThreadTestRule')
+  #override
+  @classmethod
+  def filename_match(cls, wholepath):
+    if (wholepath.endswith('.java') and 'Test' in wholepath and
+        wholepath not in cls.ignore_files()):
+      return True
+    return False

@@ -19,7 +19,7 @@ _YEAR_PATTERN = re.compile(r'^(\/\/ Copyright) 2017')
 
 _FLOAT_PATTERN = re.compile(r'^\d+?\.\d+f?$')
 
-def _ReturnReplacement(pattern_string, replacement, string, flags=0):
+def _ReturnReplacement(pattern_string, replacement, string, flags=0, upper=False):
   pattern = re.compile(pattern_string, flags=flags)
   res = pattern.findall(string)
   if pattern_string == r'.*':
@@ -28,6 +28,8 @@ def _ReturnReplacement(pattern_string, replacement, string, flags=0):
     logging.warn('"%s" pattern is found more than once (%d) in "%s"' % (
       pattern_string, len(res), string if len(string) < 100
       else string[:100]+'...'))
+  if upper:
+    return pattern.sub(replacement, string, count=1).upper()
   return pattern.sub(replacement, string, count=1)
 
 
@@ -88,7 +90,11 @@ def _SortListAndTable(ls, tb, pls, ptb):
 
 
 def _GetMainClassAndSuperClassName(element_table):
-  main_class = min(element_table[model.ClassDeclaration], key=lambda x:x.lexpos)
+  try:
+    main_class = min(element_table[model.ClassDeclaration], key=lambda x:x.lexpos)
+  except:
+    import ipdb
+    ipdb.set_trace()
   super_class_name = main_class.extends.name.value if main_class.extends is \
       not None else 'java.lang.Object'
   return main_class, super_class_name
@@ -348,7 +354,7 @@ class BaseAgent(object):
     self.offset_table[element.lexpos] += len(insertion)
 
   def _replaceString(self, pattern, replacement, element=None, optional=True,
-                     start=None, end=None, flags=0, verbose=False):
+                     start=None, end=None, flags=0, verbose=False, upper=False):
     if start is None:
       start = self._lexposToLoc(element.lexpos)
     if end is None:
@@ -361,7 +367,7 @@ class BaseAgent(object):
       raise Exception('Element not found')
     change_loc = start+search_res.start()
     content_replacement = _ReturnReplacement(
-        pattern, replacement, content_string, flags=flags)
+        pattern, replacement, content_string, flags=flags, upper=upper)
     next_element = self._locToNextElement(change_loc)
     self.content = (
         self.content[:start] + content_replacement + self.content[end+1:])

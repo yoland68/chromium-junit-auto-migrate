@@ -155,6 +155,45 @@ class TestConvertAgent(base_agent.BaseAgent):
     """Check if the test class is already JUnit4 by checking its super class"""
     return self.super_class_name == 'java.lang.Object'
 
+  def getFieldWithGetter(self):
+    """
+    a lot of tests use inherited field from parent class like mString, in a
+    TestRule, no inheritance world, these fields are transferred to test rule
+    and can be fetch through getter if there is such getter
+    e.g.
+    JUnit3: mObj.doAction() //mObj inherited from parent
+    JUnit4: mTestRule.getObj().doAction()
+    """
+    locally_declared_field_names = [
+        f.variable_declarators[0].variable.name
+        for f in self.actionOnX(model.FieldDeclaration)]
+    #Find all inherited values
+    self.actionOnX(
+        model.MethodInvocation,
+        condition=lambda x: getattr(x, "target", None)
+          and x.target.value.startswith("m")
+          and x.target.value not in locally_declared_field_names,
+        action=lambda x: self._replaceString(
+          r'm(\w)', r'%s.get$1' % self.rule_var, upper=True))
+
+  def setFieldWithSetter(self):
+    """
+    Similar to above, if a inherited field is set, use setter if setter method
+    is found
+    """
+    locally_declared_field_names = [
+        f.variable_declarators[0].variable.name
+        for f in self.actionOnX(model.FieldDeclaration)]
+    self.actionOnX(
+        model.Assignment,
+        condition=lambda x: getattr(x, "lhs", None)
+          and x.lhs.value.startswith("m")
+          and x.lhs.value not in locally_declared_field_names,
+        action=lambda x: self._replaceString(
+          r'm(\w)(\w+) = (.*);', r'%s.set\1\2(\3)' % self.rule_var))
+
+
+
   def changeRunTestOnUiThread(self):
     self.actionOnMethodInvocation(
         condition=lambda x: x.name == 'runTestOnUiThread'
@@ -278,7 +317,8 @@ class TestConvertAgent(base_agent.BaseAgent):
   def removeConstructor(self):
     self.actionOnX(model.ConstructorDeclaration,
         action=lambda x: self._replaceString(
-            '.*', '', element=x, flags=re.DOTALL), optional=True)
+            '.*', '', element=x, flags=re.DOTALL), optional=True,
+        main_table=True)
 
   def changeMinSdkAnnotation(self):
     def _action(a):
