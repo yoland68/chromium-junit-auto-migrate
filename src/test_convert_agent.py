@@ -203,6 +203,13 @@ class TestConvertAgent(base_agent.BaseAgent):
             'InstrumentationRegistry.getInstrumentation().runOnMainSync',
             element=x))
 
+  def warnAndChangeUiThreadAnnotation(self):
+    if any(i for i in self.element_table[model.Annotation]
+           if i.name.value == "UiThreadTest"):
+      self.logger.warn("There is @UiThreadTestAnnotation in this one")
+      self._removeImport('android.test.UiThreadTest')
+      self._addImport('android.support.test.annotation.UiThreadTest')
+
   def changeApis(self):
     def loopCheck(m_name):
       current_key = self.super_class_name

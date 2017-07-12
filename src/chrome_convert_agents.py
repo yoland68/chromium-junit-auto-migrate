@@ -14,6 +14,114 @@ _TOUCH_COMMON_METHOD_DICT = {
     'singleClickView': False
 }
 
+class CronetTestAgent(test_convert_agent.TestConvertAgent):
+  """Agent for CronetTestBase direct childrens"""
+  @staticmethod
+  def class_runner():
+    return ('BaseJUnit4ClassRunner',
+            'org.chromium.base.test.BaseJUnit4ClassRunner')
+
+  def skip(self):
+    if self.isJUnit4():
+      self.logger.debug('Skip: %s is already JUnit4' % self._filepath)
+    if 'abstract' in self.main_class.modifiers:
+      self.logger.debug('Skip: %s is abstract class' % self._filepath)
+      return True
+    if self.super_class_name != 'CronetTestBase':
+      self.logger.debug('Skip: %s is not CronetTestAgent direct children'
+          % self._filepath)
+      return True
+    return False
+
+  @staticmethod
+  def raw_api_mapping():
+    return {
+      "CronetTestBase": {
+        "package": "org.chromium.net",
+        "location": "components/cronet/android/test/javatests/src/org/chromium"
+          + "/net/CronetTestBase.java",
+        "rule_var": "CronetTestRule",
+        "rule": "CronetTestRule",
+        "var": "mTestRule",
+        "instan": "CronetTestRule()",
+        "special_method_change": {},
+        "parent_key": None
+      }
+    }
+
+  @classmethod
+  def ignore_files(cls):
+    return []
+
+  def actions(self):
+    self.changeSetUpTearDown()
+    self.removeExtends()
+    self.changeAssertions()
+    self.removeConstructor()
+    self.replaceInstrumentationApis()
+    self.addClassRunner()
+    self.addTestAnnotation()
+    self.warnAndChangeUiThreadAnnotation()
+    self.changeRunTestOnUiThread()
+    self.importTypes()
+    self.insertActivityTestRuleTest()
+    self.changeApis()
+    self.Save()
+
+class PartnerUnitTestAgent(test_convert_agent.TestConvertAgent):
+  """Agent for BasePartnerBrowserCustomizationUnitTest direct childrens"""
+  @staticmethod
+  def class_runner():
+    return ('BaseJUnit4ClassRunner',
+            'org.chromium.base.test.BaseJUnit4ClassRunner')
+
+  @classmethod
+  def ignore_files(cls):
+    return []
+
+  def skip(self):
+    if self.isJUnit4():
+      self.logger.debug('Skip: %s is already JUnit4' % self._filepath)
+    if 'abstract' in self.main_class.modifiers:
+      self.logger.debug('Skip: %s is abstract class' % self._filepath)
+      return True
+    if self.super_class_name != 'BasePartnerBrowserCustomizationUnitTest':
+      self.logger.debug('Skip: %s is not CronetTestAgent direct children'
+          % self._filepath)
+      return True
+    return False
+
+  @staticmethod
+  def raw_api_mapping():
+    return {
+      "BasePartnerBrowserCustomizationUnitTest": {
+        "package": "org.chromium.chrome.browser.partnercustomizations",
+        "location": "chrome/android/javatests/src/org/chromium/chrome/browser/"
+          + "partnercustomizations/BasePartnerBrowserCustomizationUnitTestRule.java",
+        "rule_var": "BasePartnerBrowserCustomizationUnitTestRule",
+        "rule": "BasePartnerBrowserCustomizationUnitTestRule",
+        "var": "mTestRule",
+        "instan": "BasePartnerBrowserCustomizationUnitTestRule()",
+        "special_method_change": {"getContext": "getContextWrapper"},
+        "parent_key": None
+      }
+    }
+
+  def actions(self):
+    self.insertActivityTestRuleTest()
+    self.changeApis()
+    self.changeSetUpTearDown()
+    self.removeExtends()
+    self.changeAssertions()
+    self.removeConstructor()
+    self.replaceInstrumentationApis()
+    self.addClassRunner()
+    self.addTestAnnotation()
+    self.warnAndChangeUiThreadAnnotation()
+    self.changeRunTestOnUiThread()
+    self.importTypes()
+    self.Save()
+
 class ChromeActivityBaseCaseAgent(test_convert_agent.TestConvertAgent):
   """Agent for ChromeActivityTestCaseBase direct childrens"""
   @staticmethod
@@ -35,7 +143,7 @@ class ChromeActivityBaseCaseAgent(test_convert_agent.TestConvertAgent):
         "special_method_change": {},
         "parent_key": None
       },
-  }
+    }
 
   @classmethod
   def ignore_files(cls):
@@ -161,13 +269,6 @@ class ChromeActivityBaseCaseAgent(test_convert_agent.TestConvertAgent):
                   x.name in _TOUCH_COMMON_METHOD_DICT.keys(),
         action=_action)
 
-  def warnAndChangeUiThreadAnnotation(self):
-    if any(i for i in self.element_table[model.Annotation]
-           if i.name.value == "UiThreadTest"):
-      self.logger.warn("There is @UiThreadTestAnnotation in this one")
-      self._removeImport('android.test.UiThreadTest')
-      self._addImport('android.support.test.annotation.UiThreadTest')
-
   def addExtraImports(self):
     self._addImport('org.chromium.chrome.browser.ChromeTabbedActivity')
 
@@ -227,6 +328,32 @@ class ChromeActivityBaseCaseAgent(test_convert_agent.TestConvertAgent):
     #Save file
     self.Save()
 
+class PartnerIntegrationTestAgent(ChromeActivityBaseCaseAgent):
+  """Agent for BasePartnerBrowserCustomizationIntegrationTest direct childrens"""
+  @staticmethod
+  def raw_api_mapping():
+    result_mapping = collections.OrderedDict()
+    base_mapping = ChromeActivityBaseCaseAgent.raw_api_mapping()
+    result_mapping["BasePartnerBrowserCustomizationIntegrationTest"] = {
+        "package": "org.chromium.chrome.browser.partnercustomizations",
+        "location": "chrome/android/javatests/src/org/chromium/chrome/browser/"
+          + "partnercustomizations/BasePartnerBrowserCustomizationIntegrationTestRule.java",
+        "rule_var": "BasePartnerBrowserCustomizationIntegrationTestRule",
+        "rule": "BasePartnerBrowserCustomizationIntegrationTestRule",
+        "var": "mActivityTestRule",
+        "instan": "BasePartnerBrowserCustomizationIntegrationTestRule()",
+        "parent_key": base_mapping.keys()[0],
+        "special_method_change": {}
+    }
+    result_mapping.update(base_mapping)
+    return result_mapping
+
+  def skip(self):
+    if self.super_class_name != "BasePartnerBrowserCustomizationIntegrationTest":
+      self.logger.debug('Skip: %s is not BasePartnerBrowserCustomizationIntegrationTest children'
+                       % self._filepath)
+      return True
+    return super(PartnerIntegrationTestAgent, self).skip()
 
 class ChromeTabbedTestAgent(ChromeActivityBaseCaseAgent):
   """Agent for ChromeTabbedTestCase direct childrens"""

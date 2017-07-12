@@ -34,6 +34,9 @@ _AGENT_DICT = {
         content_convert_agents.SelectorObserverTest,
     "native-library-test": content_convert_agents.NativeLibraryTestAgent,
     "webview-test": webview_convert_agents.WebViewTestAgent,
+    "cronet-test": chrome_convert_agents.CronetTestAgent,
+    "partner-unit-test": chrome_convert_agents.PartnerUnitTestAgent,
+    "partner-integration-test": chrome_convert_agents.PartnerIntegrationTestAgent,
 }
 
 
