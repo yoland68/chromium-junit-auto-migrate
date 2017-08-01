@@ -147,6 +147,10 @@ class BaseAgent(object):
   def _isPublicOrProtected(modifiers):
     return 'public' in modifiers or 'protected' in modifiers
 
+  @staticmethod
+  def _isStatic(modifiers):
+    return 'static' in modifiers
+
   @property
   def content(self):
     return self._content
@@ -301,7 +305,7 @@ class BaseAgent(object):
       return False
     if self._isImportedStaticMethod(method):
       return False
-    for declaration in self.element_table[model.MethodDeclaration]:
+    for declaration in self.main_element_table[model.MethodDeclaration]:
       if declaration.name == method.name:
         return False
     return True

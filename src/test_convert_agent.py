@@ -53,8 +53,12 @@ def AnalyzeMapping(java_parser, mapping):
     try:
       f = base_agent.BaseAgent(java_parser, info['location'])
       api_list = [m.name for m in f.main_element_table[model.MethodDeclaration]
-                  if f._isPublicOrProtected(m.modifiers) and
-                  m.name not in _TEST_RULE_METHODS]
+                  if f._isPublicOrProtected(m.modifiers) and not
+                  f._isStatic(m.modifiers) and m.name not in _TEST_RULE_METHODS]
+      static_api_list = [m.name for m in
+                         f.main_element_table[model.MethodDeclaration]
+                         if f._isPublicOrProtected(m.modifiers) and
+                         f._isStatic(m.modifiers)]
       local_accessible_interface = [
           m.name for m in f.main_element_table.get(
               model.InterfaceDeclaration, [])
@@ -69,6 +73,7 @@ def AnalyzeMapping(java_parser, mapping):
               m.modifiers) and m.name != f.main_class.name]
       info.update({
         'api': list(set(api_list)),
+        'static_api': list(set(static_api_list)),
         'types': local_accessible_class
             +local_accessible_interface+local_accessible_annotation})
     except IOError:
@@ -101,6 +106,10 @@ class TestConvertAgent(base_agent.BaseAgent):
     return self.rule_dict['var']
 
   @property
+  def rule_class(self):
+    return self.rule_dict['rule']
+
+  @property
   def api_mapping(self):
     return self._api_mapping
 
@@ -121,6 +130,7 @@ class TestConvertAgent(base_agent.BaseAgent):
         cls.ignore_files()):
       return True
     else:
+      logging.info('this is not java test file')
       return False
 
   def _insertActivityTestRule(self, var_type, instantiation, var):
@@ -211,18 +221,21 @@ class TestConvertAgent(base_agent.BaseAgent):
       self._addImport('android.support.test.annotation.UiThreadTest')
 
   def changeApis(self):
-    def loopCheck(m_name):
+    def loopCheck(m_name, keyword):
       current_key = self.super_class_name
       while current_key:
-        if m_name in self.api_mapping[current_key]['api']:
+        if m_name in self.api_mapping[current_key][keyword]:
           return True
         else:
           current_key = self.api_mapping[current_key]['parent_key']
       return False
+
     def _action(m):
-      if (loopCheck(m.name) or m.name in
+      if (loopCheck(m.name, 'api') or m.name in
           _SPECIAL_INSTRUMENTATION_TEST_CASE_APIS):
-            self._insertInfront(m, self.rule_var+'.')
+        self._insertInfront(m, self.rule_var+'.')
+      elif loopCheck(m.name, 'static_api'):
+        self._insertInfront(m, self.rule_class+'.')
       elif m.name in self.api_mapping[self.super_class_name].get(
           'special_method_change', {}).keys():
         self._replaceString(
