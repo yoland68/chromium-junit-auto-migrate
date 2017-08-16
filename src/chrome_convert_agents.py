@@ -31,7 +31,7 @@ class CronetTestAgent(test_convert_agent.TestConvertAgent):
       self.logger.debug('Skip: %s is not CronetTestAgent direct children'
           % self._filepath)
       return True
-    return False
+    return super(CronetTestAgent, self).skip()
 
   @staticmethod
   def raw_api_mapping():
@@ -121,6 +121,60 @@ class PartnerUnitTestAgent(test_convert_agent.TestConvertAgent):
     self.changeRunTestOnUiThread()
     self.importTypes()
     self.Save()
+
+class CrashTestAgent(test_convert_agent.TestConvertAgent):
+  """Agent for CrashTestCase direct childrens"""
+  @staticmethod
+  def class_runner():
+    return ('BaseJUnit4ClassRunner',
+            'org.chromium.base.test.BaseJUnit4ClassRunner')
+
+  @classmethod
+  def ignore_files(cls):
+    return []
+
+  def skip(self):
+    if self.isJUnit4():
+      self.logger.debug('Skip: %s is already JUnit4' % self._filepath)
+    if 'abstract' in self.main_class.modifiers:
+      self.logger.debug('Skip: %s is abstract class' % self._filepath)
+      return True
+    if self.super_class_name != 'CrashTestCase':
+      self.logger.debug('Skip: %s is not CronetTestAgent direct children'
+          % self._filepath)
+      return True
+    return False
+
+  @staticmethod
+  def raw_api_mapping():
+    return {
+      "CrashTestCase": {
+        "package": "org.chromium.components.minidump_uploader",
+        "location": "components/minidump_uploader/android/javatests/src/org/chromium/components/minidump_uploader/CrashTestRule.java",
+        "rule_var": "CrashTestRule",
+        "rule": "CrashTestRule",
+        "var": "mTestRule",
+        "instan": "CrashTestRule()",
+        "special_method_change": {},
+        "parent_key": None
+      }
+    }
+
+  def actions(self):
+    self.insertActivityTestRuleTest()
+    self.changeApis()
+    self.changeSetUpTearDown()
+    self.removeExtends()
+    self.changeAssertions()
+    self.removeConstructor()
+    self.replaceInstrumentationApis()
+    self.addClassRunner()
+    self.addTestAnnotation()
+    self.warnAndChangeUiThreadAnnotation()
+    self.changeRunTestOnUiThread()
+    self.importTypes()
+    self.Save()
+
 
 class ChromeActivityBaseCaseAgent(test_convert_agent.TestConvertAgent):
   """Agent for ChromeActivityTestCaseBase direct childrens"""
@@ -381,7 +435,6 @@ class ChromeTabbedTestAgent(ChromeActivityBaseCaseAgent):
                        % self._filepath)
       return True
     return super(ChromeTabbedTestAgent, self).skip()
-
 
 class PermissionTestAgent(ChromeActivityBaseCaseAgent):
   """Agent for PermissionTestBase direct childrens"""

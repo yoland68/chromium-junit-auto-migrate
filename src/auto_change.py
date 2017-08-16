@@ -37,6 +37,7 @@ _AGENT_DICT = {
     "cronet-test": chrome_convert_agents.CronetTestAgent,
     "partner-unit-test": chrome_convert_agents.PartnerUnitTestAgent,
     "partner-integration-test": chrome_convert_agents.PartnerIntegrationTestAgent,
+    "crash-test": chrome_convert_agents.CrashTestAgent,
 }
 
 

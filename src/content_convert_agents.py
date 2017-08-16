@@ -59,7 +59,6 @@ class NativeLibraryTestAgent(test_convert_agent.TestConvertAgent):
     #Save file
     self.Save()
 
-
 class ConnectivityCheckerTestAgent(NativeLibraryTestAgent):
   """Agent for ConnectivityCheckerTestAgent direct childrens"""
   @classmethod

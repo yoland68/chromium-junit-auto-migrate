@@ -3,7 +3,6 @@
 import model
 import parser
 
-import abc
 
 import json
 import re
@@ -49,10 +48,6 @@ def _TraverseTree(tree):
       if getattr(current, '_fields'):
         for f in getattr(current, '_fields'):
           stack.append(getattr(current, f))
-    # else:
-#       logging.debug(
-          # 'Current element in stack is neither SourceElement or list: '
-          # + str(current) + ' : ' + str(type(current)) + ', gonna ignore')
   main_element_list, main_element_table = _GetMainListAndTable(element_list,
       element_table)
   return _SortListAndTable(
@@ -90,13 +85,12 @@ def _SortListAndTable(ls, tb, pls, ptb):
 
 
 def _GetMainClassAndSuperClassName(element_table):
-  try:
-    main_class = min(element_table[model.ClassDeclaration], key=lambda x:x.lexpos)
-  except:
-    import ipdb
-    ipdb.set_trace()
-  super_class_name = main_class.extends.name.value if main_class.extends is \
-      not None else 'java.lang.Object'
+  main_class = None
+  if element_table.get(model.ClassDeclaration):
+    main_class = min(element_table.get(model.ClassDeclaration),
+        key=lambda x:x.lexpos)
+  super_class_name = main_class.extends.name.value if main_class and \
+      main_class.extends is not None else 'java.lang.Object'
   return main_class, super_class_name
 
 
