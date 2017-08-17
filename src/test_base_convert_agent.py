@@ -157,7 +157,7 @@ class BaseCaseAgent(test_convert_agent.TestConvertAgent):
     for r in block_range:
       if m.lexpos > r[0] and m.lexend < r[1]:
         return True
-    return False
+    return super.skip()
 
   def getMethods(self):
     accessible, inaccessible = [], []
@@ -261,7 +261,7 @@ class BaseCaseAgent(test_convert_agent.TestConvertAgent):
       f.write(jinja2.Template(template_string).render(data))
 
   def skip(self):
-    return False
+    return super.skip()
 
 
 

@@ -24,6 +24,9 @@ class CronetTestAgent(test_convert_agent.TestConvertAgent):
   def skip(self):
     if self.isJUnit4():
       self.logger.debug('Skip: %s is already JUnit4' % self._filepath)
+    if self.main_class is None:
+      self.logger.debug('Skip: %s is not a java class' % self._filepath)
+      return True
     if 'abstract' in self.main_class.modifiers:
       self.logger.debug('Skip: %s is abstract class' % self._filepath)
       return True
@@ -31,7 +34,7 @@ class CronetTestAgent(test_convert_agent.TestConvertAgent):
       self.logger.debug('Skip: %s is not CronetTestAgent direct children'
           % self._filepath)
       return True
-    return super(CronetTestAgent, self).skip()
+    return False
 
   @staticmethod
   def raw_api_mapping():
@@ -82,6 +85,9 @@ class PartnerUnitTestAgent(test_convert_agent.TestConvertAgent):
   def skip(self):
     if self.isJUnit4():
       self.logger.debug('Skip: %s is already JUnit4' % self._filepath)
+    if self.main_class is None:
+      self.logger.debug('Skip: %s is not a java class' % self._filepath)
+      return True
     if 'abstract' in self.main_class.modifiers:
       self.logger.debug('Skip: %s is abstract class' % self._filepath)
       return True
@@ -136,6 +142,9 @@ class CrashTestAgent(test_convert_agent.TestConvertAgent):
   def skip(self):
     if self.isJUnit4():
       self.logger.debug('Skip: %s is already JUnit4' % self._filepath)
+    if self.main_class is None:
+      self.logger.debug('Skip: %s is not a java class' % self._filepath)
+      return True
     if 'abstract' in self.main_class.modifiers:
       self.logger.debug('Skip: %s is abstract class' % self._filepath)
       return True
@@ -211,6 +220,9 @@ class ChromeActivityBaseCaseAgent(test_convert_agent.TestConvertAgent):
   def skip(self):
     if self.isJUnit4():
       self.logger.debug('Skip: %s is already JUnit4' % self._filepath)
+      return True
+    if self.main_class is None:
+      self.logger.debug('Skip: %s is not a java class' % self._filepath)
       return True
     if 'abstract' in self.main_class.modifiers:
       self.logger.debug('Skip: %s is abstract class' % self._filepath)
@@ -381,6 +393,33 @@ class ChromeActivityBaseCaseAgent(test_convert_agent.TestConvertAgent):
 
     #Save file
     self.Save()
+
+class SyncTestAgent(ChromeActivityBaseCaseAgent):
+  """Agent for SyncTestBase direct childrens"""
+  @staticmethod
+  def raw_api_mapping():
+    result_mapping = collections.OrderedDict()
+    base_mapping = ChromeActivityBaseCaseAgent.raw_api_mapping()
+    result_mapping["SyncTestBase"] = {
+        "package": "org.chromium.chrome.permission",
+        "location": "chrome/android/sync_shell/javatests/src/org/chromium/chrome/browser"
+            +"/sync/SyncTestBase.java",
+        "rule_var": "SyncTestRule",
+        "rule": "SyncTestRule",
+        "var": "mSyncTestRule",
+        "instan": "SyncTestRule()",
+        "parent_key": base_mapping.keys()[0],
+        "special_method_change": {}
+    }
+    result_mapping.update(base_mapping)
+    return result_mapping
+
+  def skip(self):
+    if self.super_class_name != "SyncTestBase":
+      self.logger.debug('Skip: %s is not SyncTestBase children'
+                       % self._filepath)
+      return True
+    return super(SyncTestAgent, self).skip()
 
 class PartnerIntegrationTestAgent(ChromeActivityBaseCaseAgent):
   """Agent for BasePartnerBrowserCustomizationIntegrationTest direct childrens"""

@@ -42,7 +42,7 @@ class NativeLibraryTestAgent(test_convert_agent.TestConvertAgent):
       self.logger.debug('Skip: %s is not NativeLibraryTestBase children'
                        % self._filepath)
       return True
-    return False
+    return super.skip()
 
   def actions(self):
     self.changeSetUpTearDown()
@@ -86,7 +86,7 @@ class ConnectivityCheckerTestAgent(NativeLibraryTestAgent):
       self.logger.debug('Skip: %s is not ConnectivityCheckerTestBase children'
                        % self._filepath)
       return True
-    return False
+    return super.skip()
 
 class SelectorObserverTest(test_convert_agent.TestConvertAgent):
   """Agent for SelectorObserverTestAgent direct childrens"""
@@ -120,4 +120,4 @@ class SelectorObserverTest(test_convert_agent.TestConvertAgent):
       self.logger.debug('Skip: %s is not TabModelSelectorObserverTestBase children'
                        % self._filepath)
       return True
-    return False
+    return super.skip()

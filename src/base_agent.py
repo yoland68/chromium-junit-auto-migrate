@@ -215,7 +215,12 @@ class BaseAgent(object):
     self._content_is_change = False
     self._element_list, self._element_table, self._main_element_list, \
         self._main_element_table = _TraverseTree(self._tree)
-    assert len(self._element_list) > 0, "%s file does not have content" % filepath
+    if len(self._element_list) <= 0:
+      logging.warn("unable to read file, %s, file likely contains java8 syntax",
+          filepath)
+      self._failed_to_parse = True
+    else:
+      self._failed_to_parse = False
 
     self._content_is_change = False
 

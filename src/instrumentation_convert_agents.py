@@ -59,5 +59,5 @@ class InstrumentationTestCaseAgent(test_convert_agent.TestConvertAgent):
     if (wholepath.endswith('.java') and 'Test' in wholepath and
         wholepath not in cls.ignore_files()):
       return True
-    return False
+    return super.skip()
 

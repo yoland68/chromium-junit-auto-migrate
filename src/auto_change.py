@@ -36,6 +36,7 @@ _AGENT_DICT = {
     "webview-test": webview_convert_agents.WebViewTestAgent,
     "cronet-test": chrome_convert_agents.CronetTestAgent,
     "partner-unit-test": chrome_convert_agents.PartnerUnitTestAgent,
+    "sync-test": chrome_convert_agents.SyncTestAgent,
     "partner-integration-test": chrome_convert_agents.PartnerIntegrationTestAgent,
     "crash-test": chrome_convert_agents.CrashTestAgent,
 }
@@ -62,6 +63,8 @@ def ConvertFile(java_parser, agent_strings, whole_path, save_as_new,
                       _AGENT_DICT[i].filename_match(whole_path)]:
     agent = agent_class(java_parser, whole_path, logger=logger, agent=agent,
                         save_as_new=save_as_new, use_base_class=use_base_class)
+    if agent._failed_to_parse:
+      continue
     if use_base_class or not agent.skip():
       agent.actions()
       return agent
