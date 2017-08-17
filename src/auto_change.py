@@ -22,6 +22,7 @@ _AGENT_DICT = {
     "multiactivity-test": chrome_convert_agents.MultiActivityTestAgent,
     "vr-test": chrome_convert_agents.ChromeVrTestAgent,
     "payment-test": chrome_convert_agents.PaymentRequestAgent,
+    "mojo-test": chrome_convert_agents.MojoTestAgent,
     "cast-test": chrome_convert_agents.CastTestAgent,
     "provider-test": chrome_convert_agents.ProviderTestAgent,
     "customtabs-test": chrome_convert_agents.CustomTabActivityTestAgent,

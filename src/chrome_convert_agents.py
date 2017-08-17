@@ -14,6 +14,63 @@ _TOUCH_COMMON_METHOD_DICT = {
     'singleClickView': False
 }
 
+class MojoTestAgent(test_convert_agent.TestConvertAgent):
+  """Agent for MojoTestCase direct childrens"""
+  @staticmethod
+  def class_runner():
+    return ('BaseJUnit4ClassRunner',
+            'org.chromium.base.test.BaseJUnit4ClassRunner')
+
+  def skip(self):
+    if self.isJUnit4():
+      self.logger.debug('Skip: %s is already JUnit4' % self._filepath)
+    if self.main_class is None:
+      self.logger.debug('Skip: %s is not a java class' % self._filepath)
+      return True
+    if 'abstract' in self.main_class.modifiers:
+      self.logger.debug('Skip: %s is abstract class' % self._filepath)
+      return True
+    if self.super_class_name != 'MojoTestCase':
+      self.logger.debug('Skip: %s is not MojoTestAgent direct children'
+          % self._filepath)
+      return True
+    return False
+
+  @staticmethod
+  def raw_api_mapping():
+    return {
+      "MojoTestCase": {
+        "package": "org.chromium.net",
+        "location": "mojo/android/javatests/src/org/chromium/mojo/"
+          + "MojoTestRule.java",
+        "rule_var": "MojoTestRule",
+        "rule": "MojoTestRule",
+        "var": "mTestRule",
+        "instan": "MojoTestRule()",
+        "special_method_change": {},
+        "parent_key": None
+      }
+    }
+
+  @classmethod
+  def ignore_files(cls):
+    return []
+
+  def actions(self):
+    self.changeSetUpTearDown()
+    self.removeExtends()
+    self.changeAssertions()
+    self.removeConstructor()
+    self.replaceInstrumentationApis()
+    self.addClassRunner()
+    self.addTestAnnotation()
+    self.warnAndChangeUiThreadAnnotation()
+    self.changeRunTestOnUiThread()
+    self.importTypes()
+    self.insertActivityTestRuleTest()
+    self.changeApis()
+    self.Save()
+
 class CronetTestAgent(test_convert_agent.TestConvertAgent):
   """Agent for CronetTestBase direct childrens"""
   @staticmethod
@@ -42,7 +99,7 @@ class CronetTestAgent(test_convert_agent.TestConvertAgent):
       "CronetTestBase": {
         "package": "org.chromium.net",
         "location": "components/cronet/android/test/javatests/src/org/chromium"
-          + "/net/CronetTestBase.java",
+          + "/net/CronetTestRule.java",
         "rule_var": "CronetTestRule",
         "rule": "CronetTestRule",
         "var": "mTestRule",
@@ -403,7 +460,7 @@ class SyncTestAgent(ChromeActivityBaseCaseAgent):
     result_mapping["SyncTestBase"] = {
         "package": "org.chromium.chrome.permission",
         "location": "chrome/android/sync_shell/javatests/src/org/chromium/chrome/browser"
-            +"/sync/SyncTestBase.java",
+            +"/sync/SyncTestRule.java",
         "rule_var": "SyncTestRule",
         "rule": "SyncTestRule",
         "var": "mSyncTestRule",
