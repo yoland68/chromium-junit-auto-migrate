@@ -30,11 +30,18 @@ class InstrumentationTestCaseAgent(test_convert_agent.TestConvertAgent):
     return {}
 
   def skip(self):
+    if self.main_class is None:
+      self.logger.debug('Skip: %s is not test java class' % self._filepath)
+      return True
     if self.isJUnit4():
       self.logger.debug('Skip: %s is already JUnit4' % self._filepath)
-    if 'abstract' in self.main_class.modifiers:
-      self.logger.debug('Skip: %s is abstract class' % self._filepath)
-      return True
+    try:
+      if 'abstract' in self.main_class.modifiers:
+        self.logger.debug('Skip: %s is abstract class' % self._filepath)
+        return True
+    except Exception:
+      import ipdb
+      ipdb.set_trace()
     if self.super_class_name not in ['InstrumentationTestCase', 'AndroidTestCase']:
       self.logger.debug('Skip: %s is not InstrumentationTestCase direct children'
           % self._filepath)

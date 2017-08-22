@@ -100,8 +100,6 @@ class BaseAgent(object):
   def __init__(self, java_parser, filepath, logger=logging.getLogger(),
       agent=None, **kwargs):
     if agent != None and agent.filepath == filepath:
-      assert isinstance(agent, BaseAgent)
-      assert not agent._content_is_change
       self._tree = agent._tree
       self._filepath = agent._filepath
       self._content = agent.content
@@ -111,10 +109,13 @@ class BaseAgent(object):
       self._element_table = agent._element_table
       self.main_class = agent.main_class
       self.super_class_name = agent.super_class_name
+      self._failed_to_parse = agent._failed_to_parse
 
     else:
       self.Load(java_parser, filepath)
 
+    self.offset_table = collections.defaultdict(int)
+    self.offset_table[0] = -2
     self.logger = logger
     self.parser = java_parser
     self.kwargs = kwargs
@@ -223,10 +224,6 @@ class BaseAgent(object):
       self._failed_to_parse = False
 
     self._content_is_change = False
-
-    #table that maps lexpos to the offset amount
-    self.offset_table = collections.defaultdict(int)
-    self.offset_table[0] = -2
 
     self.main_class, self.super_class_name = _GetMainClassAndSuperClassName(
         self._element_table)

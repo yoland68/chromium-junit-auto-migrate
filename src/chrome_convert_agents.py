@@ -458,7 +458,7 @@ class SyncTestAgent(ChromeActivityBaseCaseAgent):
     result_mapping = collections.OrderedDict()
     base_mapping = ChromeActivityBaseCaseAgent.raw_api_mapping()
     result_mapping["SyncTestBase"] = {
-        "package": "org.chromium.chrome.permission",
+        "package": "org.chromium.chrome.browser.sync",
         "location": "chrome/android/sync_shell/javatests/src/org/chromium/chrome/browser"
             +"/sync/SyncTestRule.java",
         "rule_var": "SyncTestRule",
@@ -541,7 +541,7 @@ class PermissionTestAgent(ChromeActivityBaseCaseAgent):
     result_mapping["PermissionTestCaseBase"] = {
         "package": "org.chromium.chrome.permission",
         "location": "chrome/android/javatests/src/org/chromium/chrome/browser"
-            +"/permissions/PermissionTestCaseBase.java",
+            +"/permissions/PermissionTestRule.java",
         "rule_var": "PermissionTestRule",
         "rule": "PermissionTestRule",
         "var": "mPermissionRule",
