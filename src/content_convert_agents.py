@@ -10,6 +10,106 @@ import collections
 import codecs
 import logging
 
+class ContentShellTestAgent(test_convert_agent.TestConvertAgent):
+  """Agent for ContentShellTestAgent direct childrens"""
+  @staticmethod
+  def class_runner():
+    return ('BaseJUnit4ClassRunner',
+            'org.chromium.base.test.BaseJUnit4ClassRunner')
+
+  @classmethod
+  def ignore_files(cls):
+    return []
+
+  @staticmethod
+  def raw_api_mapping():
+    result_mapping = collections.OrderedDict()
+    result_mapping["ContentShellTestBase"] = {
+        "package": "org.chromium.content_shell_apk",
+        "location": "content/shell/android/javatests/src/org/chromium/content_shell_apk/ContentShellActivityTestRule.java",
+        "rule_var": "ContentShellTestRule",
+        "rule": "ContentShellTestRule",
+        "var": "mActivityTestRule",
+        "instan": "ContentShellTestRule()",
+        "parent_key": None,
+        "special_method_change": {
+          "startActivityWithTestUrl": "launchContentShellWithUrlSync"}
+    }
+    return result_mapping
+
+  def skip(self):
+    if self.super_class_name != "ContentShellTestBase":
+      self.logger.debug('Skip: %s is not ContentShellTestBase children'
+                       % self._filepath)
+      return True
+    return False
+
+  def actions(self):
+    self.changeSetUpTearDown()
+    self.changeAssertions()
+    self.replaceInstrumentationApis()
+    self.addClassRunner()
+    self.addTestAnnotation()
+    self.changeRunTestOnUiThread()
+    self.importTypes()
+    self.changeSendKeys()
+    self.removeExtends()
+    self.removeConstructor()
+    self.insertActivityTestRuleTest()
+    self.changeApis()
+    #Save file
+    self.Save()
+
+class DialogOverlayImplTestAgent(ContentShellTestAgent):
+  """Agent for DialogOverlayImplTestAgent direct childrens"""
+  @staticmethod
+  def class_runner():
+    return ('BaseJUnit4ClassRunner',
+            'org.chromium.base.test.BaseJUnit4ClassRunner')
+
+  @classmethod
+  def ignore_files(cls):
+    return []
+
+  @staticmethod
+  def raw_api_mapping():
+    result_mapping = collections.OrderedDict()
+    base_mapping = ContentShellTestAgent.raw_api_mapping()
+    result_mapping["DialogOverlayImplTestBase"] = {
+        "package": "org.chromium.content_shell_apk",
+        "location": "content/public/android/javatests/src/org/chromium/content/browser/androidoverlay/DialogOverlayImplTestRule.java",
+        "rule_var": "DialogOverlayImplTestRule",
+        "rule": "DialogOverlayImplTestRule",
+        "var": "mActivityTestRule",
+        "instan": "DialogOverlayImplTestRule()",
+        "parent_key": None,
+        "special_method_change": {}
+    }
+    result_mapping.update(base_mapping)
+    return result_mapping
+
+  def skip(self):
+    if self.super_class_name != "DialogOverlayImplTestBase":
+      self.logger.debug('Skip: %s is not DialogOverlayImplTestBase children'
+                       % self._filepath)
+      return True
+    return False
+
+  def actions(self):
+    self.changeSetUpTearDown()
+    self.changeAssertions()
+    self.replaceInstrumentationApis()
+    self.addClassRunner()
+    self.addTestAnnotation()
+    self.changeRunTestOnUiThread()
+    self.changeSendKeys()
+    self.removeExtends()
+    self.removeConstructor()
+    self.insertActivityTestRuleTest()
+    self.changeApis()
+    #Save file
+    self.Save()
+
 class NativeLibraryTestAgent(test_convert_agent.TestConvertAgent):
   """Agent for NativeLibraryTestAgent direct childrens"""
   @staticmethod

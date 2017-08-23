@@ -77,7 +77,7 @@ def AnalyzeMapping(java_parser, mapping):
         'types': local_accessible_class
             +local_accessible_interface+local_accessible_annotation})
     except IOError:
-      logging.warning("%s doesn't exist" % info['location'])
+      logging.debug("%s doesn't exist" % info['location'])
   return mapping
 
 
@@ -130,7 +130,7 @@ class TestConvertAgent(base_agent.BaseAgent):
         cls.ignore_files()):
       return True
     else:
-      logging.info('this is not java test file')
+      logging.debug('this is not java test file')
       return False
 
   def _insertActivityTestRule(self, var_type, instantiation, var):

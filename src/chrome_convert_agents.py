@@ -87,7 +87,7 @@ class CronetTestAgent(test_convert_agent.TestConvertAgent):
     if 'abstract' in self.main_class.modifiers:
       self.logger.debug('Skip: %s is abstract class' % self._filepath)
       return True
-    if self.super_class_name != 'CronetTestBase':
+    if self.super_class_name not in ['CronetTestBase', 'CronetSmokeTestCase', 'NativeCronetTestCase']:
       self.logger.debug('Skip: %s is not CronetTestAgent direct children'
           % self._filepath)
       return True
@@ -384,8 +384,14 @@ class ChromeActivityBaseCaseAgent(test_convert_agent.TestConvertAgent):
       else:
         replacement = r'TouchCommon.\1'
 
-      self._replaceString(
-          '('+m.name+'\()', replacement, element=m, optional=False)
+      try:
+        self._replaceString(
+            '('+m.name+'\()', replacement, element=m, optional=False)
+      except Exception:
+        import ipdb
+        ipdb.set_trace()
+        self._replaceString(
+            '('+m.name+'\()', replacement, element=m, optional=False)
       self._addImport('org.chromium.content.browser.test.util.TouchCommon')
     self.actionOnMethodInvocation(
         condition=lambda x:self._isInherited(x) and
@@ -394,6 +400,10 @@ class ChromeActivityBaseCaseAgent(test_convert_agent.TestConvertAgent):
 
   def addExtraImports(self):
     self._addImport('org.chromium.chrome.browser.ChromeTabbedActivity')
+
+  def debug(self):
+    m = [i for i in self.main_element_table[model.MethodInvocation] if i.name == 'singleClickView' and i.arguments[0].value == 'tabSwitcherButton'][0]
+    self.logger.error('#YOLAND: ' + self.content[self._lexposToLoc(m.lexpos):self._lexposToLoc(m.lexend)+1])
 
   def actions(self):
     #Change setup teardown to be public, remove @Override, add @Before @After

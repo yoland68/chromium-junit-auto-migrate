@@ -12,13 +12,12 @@ import argparse
 import os
 import sys
 
-_AGENT_DICT = {
+_TEST_AGENT_DICT = {
     "chrome-base-test-case": chrome_convert_agents.ChromeActivityBaseCaseAgent,
     "chrome-permission-test": chrome_convert_agents.PermissionTestAgent,
     "chrome-tabbed-test": chrome_convert_agents.ChromeTabbedTestAgent,
     "instrumentation":
         instrumentation_convert_agents.InstrumentationTestCaseAgent,
-    "base-class": test_base_convert_agent.BaseCaseAgent,
     "multiactivity-test": chrome_convert_agents.MultiActivityTestAgent,
     "vr-test": chrome_convert_agents.ChromeVrTestAgent,
     "payment-test": chrome_convert_agents.PaymentRequestAgent,
@@ -27,13 +26,15 @@ _AGENT_DICT = {
     "provider-test": chrome_convert_agents.ProviderTestAgent,
     "customtabs-test": chrome_convert_agents.CustomTabActivityTestAgent,
     "notification-test": chrome_convert_agents.NotificationTestAgent,
-    "download-test": chrome_convert_agents.DownloadTestAgent,
+    #"download-test": chrome_convert_agents.DownloadTestAgent,
     "bottom-sheet-test": chrome_convert_agents.BottomSheetTestAgent,
     "connectivity-checker-test":
         content_convert_agents.ConnectivityCheckerTestAgent,
     "tab-model-selector-observer-test":
         content_convert_agents.SelectorObserverTest,
     "native-library-test": content_convert_agents.NativeLibraryTestAgent,
+    "content-shell-test": content_convert_agents.ContentShellTestAgent,
+    "dialog-overlay-impl-test": content_convert_agents.DialogOverlayImplTestAgent,
     "webview-test": webview_convert_agents.WebViewTestAgent,
     "cronet-test": chrome_convert_agents.CronetTestAgent,
     "partner-unit-test": chrome_convert_agents.PartnerUnitTestAgent,
@@ -41,6 +42,9 @@ _AGENT_DICT = {
     "partner-integration-test": chrome_convert_agents.PartnerIntegrationTestAgent,
     "crash-test": chrome_convert_agents.CrashTestAgent,
 }
+
+_AGENT_DICT = _TEST_AGENT_DICT.copy()
+_AGENT_DICT.update({"base-class": test_base_convert_agent.BaseCaseAgent})
 
 
 def ConvertDirectory(directory, java_parser, agent_strings,
@@ -69,6 +73,7 @@ def ConvertFile(java_parser, agent_strings, whole_path, save_as_new,
     if use_base_class or not agent.skip():
       agent.actions()
       return agent
+  logger.error('Failed to match to any agent')
 
 def SetLogger(logging_level, filepath):
   log = logging.getLogger()
@@ -128,7 +133,7 @@ def main():
         'Can not specify --jave-file and --directory at the same time')
 
   if arguments.agent == 'all':
-    agents = _AGENT_DICT.keys()
+    agents = _TEST_AGENT_DICT.keys()
   else:
     agents = [arguments.agent]
   java_parser = CreateJavaParser()

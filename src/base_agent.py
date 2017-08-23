@@ -225,6 +225,9 @@ class BaseAgent(object):
 
     self._content_is_change = False
 
+    self.offset_table = collections.defaultdict(int)
+    self.offset_table[0] = -2
+
     self.main_class, self.super_class_name = _GetMainClassAndSuperClassName(
         self._element_table)
 

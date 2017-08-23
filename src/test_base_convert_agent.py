@@ -261,7 +261,7 @@ class BaseCaseAgent(test_convert_agent.TestConvertAgent):
       f.write(jinja2.Template(template_string).render(data))
 
   def skip(self):
-    return super.skip()
+    return False
 
 
 
