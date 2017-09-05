@@ -1,5 +1,5 @@
 # Chromium JUnit4 Auto Change Script
-The purpose of this script is to help tokenize and parse instrumentation
+The purpose of this script is to help tokenize and parse Chromium instrumentation
 javatests that were based in JUnit3 and automatically refactor them to JUnit4
 style javatests.
 
@@ -19,7 +19,6 @@ optional arguments:
 ```text
   -h, --help            show this help message and exit
   -u, --use-base-class  Use another base class to convert
-  --no-skip             Do not skip the specified file
   -f JAVA_FILE, --java-file JAVA_FILE
                         Java file
   -d DIRECTORY, --directory DIRECTORY
@@ -58,7 +57,7 @@ Test with different parents tend to have different convertion actions, but norma
 - **Import any inherited** classes, annotations, interfaces
 - **Change API calls** based on the parent's declared APIs (e.g. XTestBase.java is refactored to be XActivityTestRule.java, any parent method call, such as`methodX()`, in javatests that extends from XTestBase would be refactored to `mActivityTestRule.methodX()`
 
-See this [link](https://github.com/yoland68/chromium-junit-auto-migrate/blob/master/src/chrome_convert_agents.py#L171) for action definitions
+See this [link](https://github.com/yoland68/chromium-junit-auto-migrate/blob/master/src/chrome_convert_agents.py#L408) for action definitions
 
 ## How it works
 The script would find all the java file that are named `*Test.java` in a given directory
@@ -89,7 +88,7 @@ There are a couple of things this script **can not** do for you
 
 5. Inherited public variables. Issue: TestBase class has a public variable, and child tests access that variable. Now that TestBases are gone. Solution: Because the TestBase's APIs are mostly 1 to 1 mapped to TestRule class, one should create a getter for these public variable in TestRule.
 
-6. Java 7 only
+6. Java 7 only, recently a lot of tests have been converted to Java8 syntax, one way to get around it is to comment out the java8 syntax like lambdas
 
 
 ## Bug
