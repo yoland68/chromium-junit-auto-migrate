@@ -73,6 +73,7 @@ After a few min manual fix, when running these tests, 387 out of 429 test method
 
 For `src/base/javatests`, 100% test was able to compile after script run, 22 out of 25 tests runs successfully (88%)
 
+**Update** This stats is based off initial version of the script, the current success rate is much higher since I fixed a lot of issues over time
 
 ## Known issues
 There are a couple of things this script **can not** do for you
