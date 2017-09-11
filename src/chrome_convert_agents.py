@@ -271,7 +271,8 @@ class ChromeActivityBaseCaseAgent(test_convert_agent.TestConvertAgent):
       "chrome/android/javatests/src/org/chromium/chrome/test/util/parameters/\
           SigninParametersTest.java",
       "chrome/android/javatests/src/org/chromium/chrome/browser/webapps/\
-          WebApkIntegrationTest.java"
+          WebApkIntegrationTest.java",
+      "chrome/android/javatests/src/org/chromium/chrome/browser/bookmarks/BookmarkTest.java"
     ]
 
   def skip(self):
